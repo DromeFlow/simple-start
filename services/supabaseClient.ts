@@ -1,14 +1,11 @@
 // filepath: services/supabaseClient.ts
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// IMPORTANTE: neste projeto não usamos variáveis VITE_* no runtime da Lovable.
+// Usamos diretamente a URL e a chave anônima do projeto Supabase `producaodrome`.
+// Estes valores são PÚBLICOS (anon key), então é seguro usá-los no frontend.
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  const errorMessage = "As credenciais do Supabase (URL e Chave Anônima) não foram configuradas nas variáveis de ambiente (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).";
-  console.error(errorMessage);
-  // O alerta foi removido, mas um erro no console é mantido caso as chaves sejam removidas.
-  throw new Error(errorMessage);
-}
+const supabaseUrl = 'https://mtizbxyrhivrezhhzjrg.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10aXpieHlyaGl2cmV6aGh6anJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NDA3MzksImV4cCI6MjA4MzIxNjczOX0.rkTI6ni9agdt91XHj9HyC4fiJS1RJlaOTi_XiSVAqLU';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
