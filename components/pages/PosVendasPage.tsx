@@ -526,7 +526,7 @@ const PosVendasPage: React.FC = () => {
     }
   };
 
-  const handleOpenScheduleModal = (record: PosVenda & { PROFISSIONAL: string | null }) => {
+  const handleOpenScheduleModal = (record: PosVenda) => {
     setSchedulingRecord(record);
     setIsScheduleModalOpen(true);
   };

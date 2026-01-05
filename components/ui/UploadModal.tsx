@@ -11,7 +11,7 @@ interface UploadModalProps {
     isOpen: boolean;
     onClose: () => void;
     onUploadSuccess: () => void;
-    unit: Unit | null;
+    unit: Unit | { id: 'ALL'; unit_name: string; unit_code: 'ALL' } | null;
 }
 
 type Status = 'idle' | 'processing' | 'success' | 'error';
