@@ -270,9 +270,15 @@ export const UserFormModal: React.FC<{
     console.log('[UserFormModal] Total de módulos a salvar:', Array.from(allModuleIds));
     console.log('[UserFormModal] Unidades selecionadas:', Array.from(selectedUnits));
 
+    // Se foi forçado um unitId (criação a partir de Gerenciar Unidades), garante essa unidade
+    const finalUnitIds = new Set(selectedUnits);
+    if (forceUnitId) {
+      finalUnitIds.add(forceUnitId);
+    }
+
     const dataToSave: UserDataPayload = {
       ...formData,
-      unit_ids: isSuperAdmin ? [] : Array.from(selectedUnits),
+      unit_ids: isSuperAdmin ? [] : Array.from(finalUnitIds),
       module_ids: isSuperAdmin ? [] : Array.from(allModuleIds),
     };
 
