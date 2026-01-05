@@ -32,7 +32,6 @@ const EditRecordModal: React.FC<EditRecordModalProps> = ({
         CLIENTE: record.CLIENTE || '',
         VALOR: record.VALOR || 0,
         status: record.status || '',
-        orcamento: record.orcamento || '',
       });
     }
   }, [record]);
@@ -69,28 +68,27 @@ const EditRecordModal: React.FC<EditRecordModalProps> = ({
         CLIENTE: formData.CLIENTE!,
         VALOR: formData.VALOR!,
         status: formData.status || '',
-        orcamento: formData.orcamento || '',
       };
 
       await onSave(updatedRecord);
     } catch (err) {
       console.error('Erro ao salvar:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao salvar registro');
+      setErrors(prev => ({ ...prev, _global: err instanceof Error ? err.message : 'Erro ao salvar registro' }));
       
       // Registrar erro ao salvar
       if (profile && selectedUnit && formData.ATENDIMENTO_ID) {
         const actionCode = record ? 'update_atend' : 'create_atend';
         activityLogger.logActivity({
-          unitCode: selectedUnit,
+          unitCode: selectedUnit.unit_code,
           actionCode,
-          userIdentifier: profile.email || profile.name,
+          userIdentifier: profile.email || profile.full_name,
           status: 'error',
           atendId: formData.ATENDIMENTO_ID,
           metadata: { error_message: err instanceof Error ? err.message : 'Erro desconhecido' }
         });
       }
     } finally {
-      setSaving(false);
+      setIsLoading(false);
     }
   };
 

@@ -189,6 +189,7 @@ export interface DataRecord {
   confirmacao: boolean | null;
   status: string | null;
   unidade: string | null;
+  unidade_code?: string | null;
   observacao: string | null;
   'pos vendas': string | null;
   comentario: string | null;
@@ -223,7 +224,7 @@ export interface ServiceAnalysisRecord {
 export interface ClientAnalysisData {
   currentMonthClients: Set<string>;
   allPreviousClients: Set<string>;
-  clientDetails: { CLIENTE: string, PERÍODO: string, TIPO: string }[];
+  clientDetails: { CLIENTE: string; PERÍODO: string; TIPO: string; CADASTRO?: string | null }[];
 }
 
 export interface RepasseAnalysisRecord {
