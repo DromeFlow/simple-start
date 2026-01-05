@@ -168,7 +168,7 @@ const ComercialCardModal: React.FC<Props> = ({
         const logMethod = initialCard ? activityLogger.logComercialUpdate : activityLogger.logComercialCreate;
         logMethod(
           profile.email || profile.name,
-          selectedUnit,
+          typeof selectedUnit === 'string' ? selectedUnit : selectedUnit.unit_code,
           'success'
         );
       }

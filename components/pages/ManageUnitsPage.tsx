@@ -1502,7 +1502,7 @@ const ManageUnitsPage: React.FC = () => {
 
     try {
       if (editingKey) {
-        await updateUnitKey(editingKey.id, keyData);
+        await updateUnitKey(String(editingKey.id), keyData);
       } else {
         await createUnitKey(selectedUnit.id, keyData);
       }

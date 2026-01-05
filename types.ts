@@ -14,6 +14,14 @@ export interface Profile {
   email?: string | null;
   full_name: string;
   role: UserRole;
+  // Alias para compatibilidade com pontos onde se usa profile.name
+  name?: string;
+  // Unidades associadas ao usuário (usado em filtros, logs, etc.)
+  units?: Array<{
+    id: string;
+    code: string;
+    name?: string;
+  }>;
 }
 
 export interface Unit {
@@ -53,6 +61,11 @@ export interface UnitKey {
   pos_vendas: string | null;
   conexao: string | null;
   id_recruta: string | null;
+  // Campos legados usados pela UI em Gerenciar Unidades
+  whats_profi?: string | null;
+  whats_client?: string | null;
+  trigger?: string | null;
+  description?: string | null;
 }
 
 export interface Plan {
@@ -382,6 +395,9 @@ export interface PosVenda {
   horario_agendamento: string | null; // Horário programado para envio (HH:MM:SS)
   created_at: string;
   updated_at: string;
+  // Campos adicionais populados via joins ou sincronizações
+  data_finalizacao?: string | null;
+  PROFISSIONAL?: string | null;
 }
 
 export interface PosVendaFormData {
@@ -433,6 +449,7 @@ export interface AtendimentoSearchResult {
   DATA: string;
   SERVICO: string;
   ENDERECO: string;
+  ORCAMENTO?: string | number | null;
 }
 
 export interface PaymentRecord {
@@ -445,6 +462,10 @@ export interface PaymentRecord {
   data_vencimento: string; // YYYY-MM-DD
   tipo_pagamento?: string | null;
   data_pagamento?: string | null; // ISO timestamp
+  // Campos específicos de fatura (podem não existir em todos os registros)
+  numero_fatura?: string | null;
+  link_fatura?: string | null;
+  // Campos legados/genéricos
   link?: string | null;
   grupo?: string | null;
   nome?: string | null; // Nome do cliente desnormalizado

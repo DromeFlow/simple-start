@@ -20,7 +20,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_database_metrics: {
+        Args: never
+        Returns: {
+          active_connections: number
+          cache_hit_ratio: number
+          max_connections: number
+          transactions_committed: number
+          transactions_rolled_back: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

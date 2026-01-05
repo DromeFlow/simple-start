@@ -168,7 +168,7 @@ const EditRecordModal: React.FC<EditRecordModalProps> = ({
           )}
 
           <div className="space-y-3">
-            {/* Data e Orçamento na mesma linha */}
+            {/* Data */}
             <div className="flex gap-3">
               <label className="flex-1 flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-text-secondary flex items-center gap-1">
@@ -179,16 +179,6 @@ const EditRecordModal: React.FC<EditRecordModalProps> = ({
                   value={formatDateForInput(formData.DATA || '')}
                   onChange={(e) => handleInputChange('DATA', e.target.value)}
                   className="rounded-lg border border-border-secondary bg-bg-tertiary px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 transition-all"
-                />
-              </label>
-              <label className="flex-1 flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-text-secondary">Orçamento</span>
-                <input
-                  type="text"
-                  value={formData.orcamento || ''}
-                  onChange={(e) => handleInputChange('orcamento', e.target.value)}
-                  className="rounded-lg border border-border-secondary bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 transition-all font-mono"
-                  placeholder="Número do orçamento"
                 />
               </label>
             </div>
