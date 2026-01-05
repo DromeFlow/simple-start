@@ -3,6 +3,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteCompression from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
+import { componentTagger } from 'lovable-tagger';
 // Fix: Import fileURLToPath to resolve __dirname in an ES module context.
 import { fileURLToPath } from 'url';
 
@@ -14,6 +15,7 @@ export default defineConfig(({ mode }) => {
     return {
       plugins: [
         react(),
+        mode === 'development' && componentTagger(),
         // PWA with Service Worker
         VitePWA({
           registerType: 'autoUpdate',
@@ -124,10 +126,11 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          '@': path.resolve(__dirname, '.'),
+          '@': path.resolve(__dirname, './src'),
         }
       },
       server: {
+        host: '::',
         port: 8080,
       },
       build: {
