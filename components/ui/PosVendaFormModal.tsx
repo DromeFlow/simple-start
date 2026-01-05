@@ -105,13 +105,14 @@ const PosVendaFormModal: React.FC<PosVendaFormModalProps> = ({ record, onClose }
       if (profile && selectedUnit) {
         const actionCode = record ? 'update_posvendas' : 'create_posvendas';
         const logMethod = record ? activityLogger.logPosVendasUpdate : activityLogger.logPosVendasCreate;
+        const unitCode = typeof selectedUnit === 'string' ? selectedUnit : selectedUnit.unit_code;
         logMethod(
           profile.email || profile.name,
-          selectedUnit,
+          unitCode,
           'success'
         );
       }
-      
+
       onClose();
     } catch (error) {
       console.error('Erro ao salvar:', error);
