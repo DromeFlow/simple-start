@@ -50,9 +50,10 @@ export const ICON_NAMES = Array.from(new Set([
 interface IconProps {
   name: string;
   className?: string;
+  title?: string;
 }
 
-export const Icon: React.FC<IconProps> = ({ name, className }) => {
+export const Icon: React.FC<IconProps> = ({ name, className, title }) => {
   // Tenta componente pronto do lucide-react (PascalCase)
   const LucideComp = (Lucide as any)[name] as any;
   if (LucideComp) {
@@ -61,7 +62,8 @@ export const Icon: React.FC<IconProps> = ({ name, className }) => {
     const finalClassName = className ? `flex-shrink-0 ${className}` : 'flex-shrink-0 w-5 h-5';
     return React.createElement(LucideComp, { 
       className: finalClassName,
-      strokeWidth: 2 // Padroniza a espessura do traço
+      strokeWidth: 2, // Padroniza a espessura do traço
+      title,
     });
   }
 

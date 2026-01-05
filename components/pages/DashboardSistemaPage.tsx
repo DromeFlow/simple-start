@@ -107,16 +107,17 @@ const DashboardSistemaPage: React.FC = () => {
 
       if (error) throw error;
 
-      // Mapeia activity_logs para formato N8NMonitoringLog
+      // Mapeia activity_logs para formato N8NMonitoringLog (legacy)
       return (data || []).map((log: ActivityLog) => ({
         id: log.id,
         created_at: log.created_at,
-        unit: log.unit_code || undefined,
-        workflow: log.workflow || undefined,
-        status: log.status || undefined,
-        action: log.action_code || undefined,
-        user_identifier: log.user_identifier || undefined,
-        metadata: log.metadata
+        unit: log.unit_code || null,
+        status: log.status || null,
+        horario: log.horario || null,
+        user: log.user_identifier || null,
+        atend_id: log.atend_id || null,
+        action: log.action_code || null,
+        workflow: log.workflow || null,
       }));
     } catch (error) {
       console.error('[Dashboard Sistema] Falha ao buscar logs de monitoramento:', error);
