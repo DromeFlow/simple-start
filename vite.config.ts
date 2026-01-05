@@ -127,6 +127,9 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve(__dirname, '.'),
         }
       },
+      server: {
+        port: 8080,
+      },
       build: {
         rollupOptions: {
           output: {
@@ -152,4 +155,4 @@ export default defineConfig(({ mode }) => {
       // Copiar .htaccess para dist/ durante o build
       publicDir: 'public',
     };
-});
+  });
