@@ -155,7 +155,7 @@ const RecrutadoraCardModal: React.FC<Props> = ({
         fumante: fumante === null ? null : (fumante ? 'sim' : 'nao') as any,
         estado_civil: estadoCivil || null,
         filhos: filhos === null ? null : (filhos ? 'sim' : 'nao') as any,
-  qto_filhos: qtosFilhos === '' ? null : String(qtosFilhos),
+        qto_filhos: qtosFilhos === '' ? null : Number(qtosFilhos),
         rotina_filhos: rotinaFilhos || null,
         ['endereço']: endereco || null as any,
         rg: rg || null,

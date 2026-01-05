@@ -23,7 +23,9 @@ const UnitKeysPage: React.FC = () => {
   const { profile } = useAuth();
   const [columns, setColumns] = useState<ColumnInfo[]>([]);
   const [stats, setStats] = useState<Record<string, { usage_count: number; active_count: number }>>({});
-  const [isValuesOpen, setIsValuesOpen] = useState<null | { column: string; rows: Array<{ unit_name: string; unit_code: string; value: any }> }>(null);
+  const [isValuesOpen, setIsValuesOpen] = useState<
+    null | { column: string; rows: Array<{ rowId: string; unit_id: string; unit_name: string; unit_code: string; value: any }> }
+  >(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
