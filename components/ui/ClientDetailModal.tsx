@@ -360,7 +360,7 @@ export const ClientDetailModal: React.FC<{
                           className="border-t border-border-secondary/50 hover:bg-accent-primary/5 cursor-pointer transition-colors"
                           onDoubleClick={async () => {
                             if (!h.id) return;
-                            const rec = await fetchDataRecordById(h.id as number);
+                            const rec = await fetchDataRecordById(String(h.id));
                             setDetailRecord(rec);
                             setDetailOpen(true);
                           }}

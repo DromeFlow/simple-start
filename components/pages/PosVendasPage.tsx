@@ -454,7 +454,7 @@ const PosVendasPage: React.FC = () => {
     setEditingRecord(null);
   };
 
-  const handleSendWebhook = async (record: PosVenda & { PROFISSIONAL: string | null }) => {
+  const handleSendWebhook = async (record: PosVenda) => {
     if (!posVendasWebhook) {
       setWebhookFeedback({ type: "error", message: "Webhook não configurado para este módulo" });
       return;
@@ -539,7 +539,7 @@ const PosVendasPage: React.FC = () => {
     }
   };
 
-  const handleOpenScheduleModal = (record: PosVenda & { PROFISSIONAL: string | null }) => {
+  const handleOpenScheduleModal = (record: PosVenda) => {
     setSchedulingRecord(record);
     setIsScheduleModalOpen(true);
   };
@@ -597,7 +597,7 @@ const PosVendasPage: React.FC = () => {
     }
   };
 
-  const handleRemoveSchedule = async (record: PosVenda & { PROFISSIONAL: string | null }) => {
+  const handleRemoveSchedule = async (record: PosVenda) => {
     if (!confirm("Deseja remover o agendamento deste pós-venda?")) return;
 
     try {
@@ -1915,7 +1915,7 @@ const PosVendasPage: React.FC = () => {
 
 // Componente Modal de Agendamento
 const ScheduleModal: React.FC<{
-  record: PosVenda & { PROFISSIONAL: string | null };
+  record: PosVenda & { PROFISSIONAL?: string | null };
   onClose: () => void;
   onSave: (dataAgendamento: string, horarioAgendamento: string) => void;
 }> = ({ record, onClose, onSave }) => {

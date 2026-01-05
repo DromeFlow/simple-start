@@ -25,7 +25,13 @@ const PosVendaFormModal: React.FC<PosVendaFormModalProps> = ({ record, onClose }
     chat_id: record?.chat_id || null,
     nome: record?.nome || null,
     contato: record?.contato || null,
-    unit_id: record?.unit_id || selectedUnit || null,
+    unit_id:
+      record?.unit_id ||
+      (typeof selectedUnit === 'string'
+        ? selectedUnit
+        : selectedUnit && (selectedUnit as any).id !== 'ALL'
+          ? (selectedUnit as any).id
+          : null),
     data: record?.data || new Date().toISOString().split('T')[0],
     status: record?.status || 'pendente',
     nota: record?.nota || null,
@@ -62,7 +68,7 @@ const PosVendaFormModal: React.FC<PosVendaFormModalProps> = ({ record, onClose }
 
   const handleSearchAtendimentos = async (value: string) => {
     setSearchTerm(value);
-    
+
     if (value.length < 2) {
       setSearchResults([]);
       setShowSearchResults(false);
@@ -70,7 +76,13 @@ const PosVendaFormModal: React.FC<PosVendaFormModalProps> = ({ record, onClose }
     }
 
     try {
-      const results = await searchAtendimentos(value, selectedUnit || undefined);
+      const unitFilter =
+        typeof selectedUnit === 'string'
+          ? selectedUnit
+          : selectedUnit && (selectedUnit as any).id !== 'ALL'
+            ? (selectedUnit as any).id
+            : undefined;
+      const results = await searchAtendimentos(value, unitFilter);
       setSearchResults(results);
       setShowSearchResults(true);
     } catch (error) {
@@ -101,16 +113,15 @@ const PosVendaFormModal: React.FC<PosVendaFormModalProps> = ({ record, onClose }
         await createPosVenda(formData);
       }
       
-      // Registrar atividade de pós-vendas
       if (profile && selectedUnit) {
-        const actionCode = record ? 'update_posvendas' : 'create_posvendas';
         const logMethod = record ? activityLogger.logPosVendasUpdate : activityLogger.logPosVendasCreate;
-        const unitCode = typeof selectedUnit === 'string' ? selectedUnit : selectedUnit.unit_code;
-        logMethod(
-          profile.email || profile.name,
-          unitCode,
-          'success'
-        );
+        const unitCode =
+          typeof selectedUnit === 'string'
+            ? selectedUnit
+            : (selectedUnit as any).unit_code === 'ALL'
+              ? 'ALL'
+              : (selectedUnit as any).unit_code;
+        logMethod(profile.email || profile.name, unitCode, 'success');
       }
 
       onClose();

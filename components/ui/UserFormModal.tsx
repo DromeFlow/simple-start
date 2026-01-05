@@ -19,7 +19,8 @@ export const UserFormModal: React.FC<{
   onSave: (user: UserDataPayload) => void;
   user: FullUser | null;
   currentAdminProfile?: Profile | null;
-}> = ({ isOpen, onClose, onSave, user, currentAdminProfile }) => {
+  forceUnitId?: string;
+}> = ({ isOpen, onClose, onSave, user, currentAdminProfile, forceUnitId }) => {
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",

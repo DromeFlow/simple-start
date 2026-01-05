@@ -35,6 +35,19 @@ export const ProfissionalFormModal: React.FC<Props> = ({ isOpen, onClose, profis
     tel_recado: '',
     observacao: '',
     status: 'Ativa',
+    fumante: '',
+    filhos: '',
+    qto_filhos: '',
+    preferencia: '',
+    sit_atual: '',
+    motivo_cadastro: '',
+    dias_semana: '',
+    dias_livres: '',
+    transporte: '',
+    exp_residencial: '',
+    ref_residencial: '',
+    exp_comercial: '',
+    ref_comercial: '',
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -86,6 +99,19 @@ export const ProfissionalFormModal: React.FC<Props> = ({ isOpen, onClose, profis
           tel_recado: profissional.tel_recado || '',
           observacao: profissional.observacao || '',
           status: profissional.status || 'Ativa',
+          fumante: (profissional as any).fumante ?? '',
+          filhos: (profissional as any).filhos ?? '',
+          qto_filhos: (profissional as any).qto_filhos ?? '',
+          preferencia: (profissional as any).preferencia ?? '',
+          sit_atual: (profissional as any).sit_atual ?? '',
+          motivo_cadastro: (profissional as any).motivo_cadastro ?? '',
+          dias_semana: (profissional as any).dias_semana ?? '',
+          dias_livres: (profissional as any).dias_livres ?? '',
+          transporte: (profissional as any).transporte ?? '',
+          exp_residencial: (profissional as any).exp_residencial ?? '',
+          ref_residencial: (profissional as any).ref_residencial ?? '',
+          exp_comercial: (profissional as any).exp_comercial ?? '',
+          ref_comercial: (profissional as any).ref_comercial ?? '',
         });
         prevObservacaoRef.current = profissional.observacao || '';
         setEditMode(false);
@@ -104,6 +130,19 @@ export const ProfissionalFormModal: React.FC<Props> = ({ isOpen, onClose, profis
           tel_recado: '',
           observacao: '',
           status: 'Ativa',
+          fumante: '',
+          filhos: '',
+          qto_filhos: '',
+          preferencia: '',
+          sit_atual: '',
+          motivo_cadastro: '',
+          dias_semana: '',
+          dias_livres: '',
+          transporte: '',
+          exp_residencial: '',
+          ref_residencial: '',
+          exp_comercial: '',
+          ref_comercial: '',
         });
         prevObservacaoRef.current = '';
         setEditMode(true);
@@ -157,7 +196,7 @@ export const ProfissionalFormModal: React.FC<Props> = ({ isOpen, onClose, profis
 
   const handleOpenDetail = async (recordId: number) => {
     try {
-      const rec = await fetchDataRecordById(recordId);
+      const rec = await fetchDataRecordById(String(recordId));
       setDetailRecord(rec);
       setDetailOpen(true);
     } catch (err) {
@@ -206,12 +245,11 @@ export const ProfissionalFormModal: React.FC<Props> = ({ isOpen, onClose, profis
     try {
       if (isCreating) {
         // Criar nova profissional
-        const newProfissional = {
+        const newProfissional: any = {
           ...formData,
           status: 'Ativa',
-          unit_id: selectedUnit && selectedUnit.unit_code !== 'ALL' ? (selectedUnit as any).id : null,
+          unit_id: selectedUnit && (selectedUnit as any).unit_code !== 'ALL' ? (selectedUnit as any).id : null,
         };
-        
         await createProfissional(newProfissional);
       } else {
         // Atualizar profissional existente
@@ -219,7 +257,7 @@ export const ProfissionalFormModal: React.FC<Props> = ({ isOpen, onClose, profis
           throw new Error('ID da profissional não encontrado');
         }
         
-        await updateProfissional(profissional.id, formData);
+        await updateProfissional(profissional.id, formData as any);
         
         // Desativa o modo de edição após salvar com sucesso
         setEditMode(false);

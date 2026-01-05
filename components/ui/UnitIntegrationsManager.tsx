@@ -3,11 +3,12 @@ import { supabase } from '../../services/supabaseClient';
 import { Icon } from './Icon';
 
 interface Integration {
-    id: string;
-    provider: string;
-    api_key: string;
-    is_active: boolean;
-    wallet_id?: string;
+  id: string;
+  provider: string;
+  api_key: string;
+  is_active: boolean;
+  wallet_id?: string;
+  webhook_token?: string | null;
 }
 
 interface Props {

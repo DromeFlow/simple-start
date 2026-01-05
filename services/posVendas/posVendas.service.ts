@@ -233,19 +233,19 @@ export const searchAtendimentos = async (
     query = query.eq('unidade', unit_id);
   }
 
-  const { data, error } = await query;
+  const { data, error } = (await query) as any;
 
   if (error) {
     console.error('Erro ao buscar atendimentos:', error);
     throw error;
   }
 
-  return (data || []).map(item => ({
+  return (data || []).map((item: any) => ({
     ATENDIMENTO_ID: item.ATENDIMENTO_ID,
     CLIENTE: item.CLIENTE,
     DATA: item.DATA,
     SERVICO: item['SERVIÇO'],
-    ENDERECO: item['ENDEREÇO']
+    ENDERECO: item['ENDEREÇO'],
   }));
 };
 
@@ -253,11 +253,11 @@ export const searchAtendimentos = async (
  * Busca dados completos de um atendimento específico por ATENDIMENTO_ID
  */
 export const getAtendimentoById = async (atendimentoId: string): Promise<AtendimentoSearchResult | null> => {
-  const { data, error } = await supabase
+  const { data, error } = (await supabase
     .from('processed_data')
     .select('ATENDIMENTO_ID, CLIENTE, DATA, SERVIÇO, ENDEREÇO')
     .eq('ATENDIMENTO_ID', atendimentoId)
-    .single();
+    .single()) as any;
 
   if (error) {
     console.error('Erro ao buscar atendimento:', error);
@@ -271,7 +271,7 @@ export const getAtendimentoById = async (atendimentoId: string): Promise<Atendim
     CLIENTE: data.CLIENTE,
     DATA: data.DATA,
     SERVICO: data['SERVIÇO'],
-    ENDERECO: data['ENDEREÇO']
+    ENDERECO: data['ENDEREÇO'],
   };
 };
 
