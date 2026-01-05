@@ -959,7 +959,7 @@ const DashboardMetricsPage: React.FC = () => {
         }));
 
         // Determinar qual campo usar baseado na métrica selecionada e submétricas
-        let fieldToUse = metric;
+        let fieldToUse: string = metric;
         if (metric === 'totalRevenue') {
             if (selectedRevenueSubMetric === 'averageTicket') fieldToUse = 'averageTicket';
             else if (selectedRevenueSubMetric === 'margin') fieldToUse = 'margin';
