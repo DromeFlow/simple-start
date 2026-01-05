@@ -19,8 +19,7 @@ export const UserFormModal: React.FC<{
   onSave: (user: UserDataPayload) => void;
   user: FullUser | null;
   currentAdminProfile?: Profile | null;
-  forceUnitId?: string;
-}> = ({ isOpen, onClose, onSave, user, currentAdminProfile, forceUnitId }) => {
+}> = ({ isOpen, onClose, onSave, user, currentAdminProfile }) => {
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -266,13 +265,17 @@ export const UserFormModal: React.FC<{
     console.log("[UserFormModal] Total de módulos a salvar:", Array.from(allModuleIds));
     console.log("[UserFormModal] Unidades selecionadas:", Array.from(selectedUnits));
 
+    // Garante a unidade forçada (vinda do ManageUnitsPage)
+    const finalUnitIds = new Set(selectedUnits);
+    if (forceUnitId) {
+      finalUnitIds.add(forceUnitId);
+    }
+
     const dataToSave: UserDataPayload = {
       ...formData,
-      unit_ids: isSuperAdmin ? [] : Array.from(selectedUnits),
+      unit_ids: isSuperAdmin ? [] : Array.from(finalUnitIds),
       module_ids: isSuperAdmin ? [] : Array.from(allModuleIds),
     };
-
-    console.log("[UserFormModal] Data to save:", dataToSave);
 
     if (user) dataToSave.id = user.id;
     if (!formData.password) delete dataToSave.password;
