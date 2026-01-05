@@ -1,19 +1,19 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useAppContext } from '../../contexts/AppContext';
-import { Icon } from '../ui/Icon';
-import type { PosVenda } from '../../types';
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { useAppContext } from "../../contexts/AppContext";
+import { Icon } from "../ui/Icon";
+import type { PosVenda } from "../../types";
 import {
   fetchPosVendas,
   fetchPendenteWithProfissional,
   deletePosVenda,
-  getMetrics
-} from '../../services/posVendas/posVendas.service';
-import PosVendaFormModal from '../ui/PosVendaFormModal';
-import { useRealtimeSubscription } from '../../hooks/useRealtimeSubscription';
-import { fetchAvailableYearsFromProcessedData } from '../../services/data/dataTable.service';
+  getMetrics,
+} from "../../services/posVendas/posVendas.service";
+import PosVendaFormModal from "../ui/PosVendaFormModal";
+import { useRealtimeSubscription } from "../../hooks/useRealtimeSubscription";
+import { fetchAvailableYearsFromProcessedData } from "../../services/data/dataTable.service";
 
-type ActiveCard = 'geral' | 'pendente' | 'agendado' | 'contatado' | 'finalizados';
+type ActiveCard = "geral" | "pendente" | "agendado" | "contatado" | "finalizados";
 
 // Componente de seletor de período
 const PeriodSelector: React.FC<{
@@ -25,36 +25,34 @@ const PeriodSelector: React.FC<{
   const [isOpen, setIsOpen] = useState(false);
 
   const months = [
-    { value: '01', label: 'Janeiro' },
-    { value: '02', label: 'Fevereiro' },
-    { value: '03', label: 'Março' },
-    { value: '04', label: 'Abril' },
-    { value: '05', label: 'Maio' },
-    { value: '06', label: 'Junho' },
-    { value: '07', label: 'Julho' },
-    { value: '08', label: 'Agosto' },
-    { value: '09', label: 'Setembro' },
-    { value: '10', label: 'Outubro' },
-    { value: '11', label: 'Novembro' },
-    { value: '12', label: 'Dezembro' },
+    { value: "01", label: "Janeiro" },
+    { value: "02", label: "Fevereiro" },
+    { value: "03", label: "Março" },
+    { value: "04", label: "Abril" },
+    { value: "05", label: "Maio" },
+    { value: "06", label: "Junho" },
+    { value: "07", label: "Julho" },
+    { value: "08", label: "Agosto" },
+    { value: "09", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" },
   ];
 
   // Usa os anos disponíveis dos dados
-  const years = availableYears && availableYears.length > 0 
-    ? availableYears 
-    : [new Date().getFullYear()];
+  const years = availableYears && availableYears.length > 0 ? availableYears : [new Date().getFullYear()];
 
   // Gera opções para todos os anos disponíveis
   const options: { value: string; label: string }[] = [];
-  years.forEach(year => {
-    months.forEach(month => {
+  years.forEach((year) => {
+    months.forEach((month) => {
       options.push({ value: `${year}-${month.value}`, label: `${month.label} ${year}` });
     });
   });
 
   const getDisplayLabel = () => {
-    const [year, monthNum] = value.split('-');
-    const month = months.find(m => m.value === monthNum);
+    const [year, monthNum] = value.split("-");
+    const month = months.find((m) => m.value === monthNum);
     return month ? `${month.label} ${year}` : value;
   };
 
@@ -67,7 +65,7 @@ const PeriodSelector: React.FC<{
         className="flex items-center justify-between w-64 px-3 py-2 text-left border rounded-md bg-bg-secondary border-border-primary focus:ring-2 focus:ring-primary focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
       >
         <span className="text-sm text-text-primary">{getDisplayLabel()}</span>
-        <Icon name={isOpen ? 'ChevronUp' : 'ChevronDown'} className="w-4 h-4 text-text-secondary" />
+        <Icon name={isOpen ? "ChevronUp" : "ChevronDown"} className="w-4 h-4 text-text-secondary" />
       </button>
 
       {isOpen && !disabled && (
@@ -83,7 +81,7 @@ const PeriodSelector: React.FC<{
                     setIsOpen(false);
                   }}
                   className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
-                    value === option.value ? 'bg-primary text-white' : 'text-text-primary'
+                    value === option.value ? "bg-primary text-white" : "text-text-primary"
                   }`}
                 >
                   {option.label}
@@ -105,18 +103,20 @@ const PosVendasPage: React.FC = () => {
   const [contatadosRecords, setContatadosRecords] = useState<PosVenda[]>([]);
   const [finalizadosRecords, setFinalizadosRecords] = useState<PosVenda[]>([]);
   const [agendadosRecords, setAgendadosRecords] = useState<PosVenda[]>([]);
-  const [pendentesProfissional, setPendentesProfissional] = useState<Array<PosVenda & { PROFISSIONAL: string | null }>>([]);
+  const [pendentesProfissional, setPendentesProfissional] = useState<Array<PosVenda & { PROFISSIONAL: string | null }>>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<PosVenda | null>(null);
-  const [activeCard, setActiveCard] = useState<ActiveCard>('geral');
+  const [activeCard, setActiveCard] = useState<ActiveCard>("geral");
   const [sendingWebhook, setSendingWebhook] = useState<Set<string>>(new Set());
-  const [webhookFeedback, setWebhookFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [webhookFeedback, setWebhookFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [specificDate, setSpecificDate] = useState<string>(''); // Filtro de data específica
+  const [specificDate, setSpecificDate] = useState<string>(""); // Filtro de data específica
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [schedulingRecord, setSchedulingRecord] = useState<(PosVenda & { PROFISSIONAL: string | null }) | null>(null);
+  const [schedulingRecord, setSchedulingRecord] = useState<PosVenda | null>(null);
   const [posVendasWebhook, setPosVendasWebhook] = useState<string | null>(null);
   const ITEMS_PER_PAGE = 25;
 
@@ -130,20 +130,29 @@ const PosVendasPage: React.FC = () => {
 
       try {
         const modules = await getModulesForUnit(selectedUnit.id);
-        console.log('[PosVendasPage] Módulos da unidade:', modules);
-        
-        const module = modules.find(m => {
-          const nameMatch = m.name.toLowerCase().includes('pós') || m.name.toLowerCase().includes('vendas');
-          const viewMatch = m.view_id === 'pos_vendas';
-          console.log('[PosVendasPage] Verificando módulo:', m.name, 'nameMatch:', nameMatch, 'viewMatch:', viewMatch, 'webhook_url:', m.webhook_url);
+        console.log("[PosVendasPage] Módulos da unidade:", modules);
+
+        const module = modules.find((m) => {
+          const nameMatch = m.name.toLowerCase().includes("pós") || m.name.toLowerCase().includes("vendas");
+          const viewMatch = m.view_id === "pos_vendas";
+          console.log(
+            "[PosVendasPage] Verificando módulo:",
+            m.name,
+            "nameMatch:",
+            nameMatch,
+            "viewMatch:",
+            viewMatch,
+            "webhook_url:",
+            m.webhook_url,
+          );
           return nameMatch || viewMatch;
         });
-        
-        console.log('[PosVendasPage] Módulo encontrado:', module);
-        console.log('[PosVendasPage] Webhook URL:', module?.webhook_url);
+
+        console.log("[PosVendasPage] Módulo encontrado:", module);
+        console.log("[PosVendasPage] Webhook URL:", module?.webhook_url);
         setPosVendasWebhook(module?.webhook_url || null);
       } catch (error) {
-        console.error('[PosVendasPage] Erro ao carregar webhook:', error);
+        console.error("[PosVendasPage] Erro ao carregar webhook:", error);
         setPosVendasWebhook(null);
       }
     };
@@ -162,7 +171,7 @@ const PosVendasPage: React.FC = () => {
   // Período selecionado (formato: YYYY-MM)
   const currentDate = new Date();
   const [selectedPeriod, setSelectedPeriod] = useState(
-    `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+    `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`,
   );
 
   // Anos disponíveis com dados
@@ -181,16 +190,16 @@ const PosVendasPage: React.FC = () => {
   // Carregar anos disponíveis quando a unidade mudar
   useEffect(() => {
     const loadYears = async () => {
-      if (!selectedUnit || selectedUnit.id === 'ALL') {
+      if (!selectedUnit || selectedUnit.id === "ALL") {
         setAvailableYears([new Date().getFullYear()]);
         return;
       }
-      
+
       try {
         const years = await fetchAvailableYearsFromProcessedData(selectedUnit.unit_code);
         setAvailableYears(years);
       } catch (error) {
-        console.error('Erro ao carregar anos disponíveis:', error);
+        console.error("Erro ao carregar anos disponíveis:", error);
         setAvailableYears([new Date().getFullYear()]);
       }
     };
@@ -205,11 +214,11 @@ const PosVendasPage: React.FC = () => {
     setLoading(true);
     try {
       const filters: any = {};
-      
+
       // Sempre filtrar pela unidade selecionada (exceto super_admin sem unidade)
-      if (selectedUnit && selectedUnit.id !== 'ALL') {
+      if (selectedUnit && selectedUnit.id !== "ALL") {
         filters.unit_id = selectedUnit.id;
-      } else if (profile?.role !== 'super_admin') {
+      } else if (profile?.role !== "super_admin") {
         // Se não houver unidade selecionada e não for super_admin, não carrega nada
         setAllRecords([]);
         setMetrics({
@@ -218,14 +227,14 @@ const PosVendasPage: React.FC = () => {
           totalFinalizados: 0,
           nps: null,
           taxaReagendamento: 0,
-          distribuicaoNotas: []
+          distribuicaoNotas: [],
         });
         setLoading(false);
         return;
       }
 
       // Filtrar pelo mês/ano selecionado
-      const [year, month] = selectedPeriod.split('-');
+      const [year, month] = selectedPeriod.split("-");
       const startDate = `${year}-${month}-01`;
       const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
       const endDate = `${year}-${month}-${lastDay}`;
@@ -234,9 +243,9 @@ const PosVendasPage: React.FC = () => {
       filters.endDate = endDate;
 
       // Buscar contatados, finalizados e agendados do mês (baseado na data do atendimento)
-      const contatadosFilters = { ...filters, status: 'contatado' };
-      const finalizadosFilters = { ...filters, status: 'finalizado' };
-      const agendadosFilters = { ...filters, status: 'agendado' };
+      const contatadosFilters = { ...filters, status: "contatado" };
+      const finalizadosFilters = { ...filters, status: "finalizado" };
+      const agendadosFilters = { ...filters, status: "agendado" };
 
       const [data, metricsData, pendenteData, contatadosData, finalizadosData, agendadosData] = await Promise.all([
         fetchPosVendas(filters),
@@ -244,17 +253,17 @@ const PosVendasPage: React.FC = () => {
         fetchPendenteWithProfissional(filters), // Já vem filtrado do início do mês até ontem
         fetchPosVendas(contatadosFilters),
         fetchPosVendas(finalizadosFilters),
-        fetchPosVendas(agendadosFilters)
+        fetchPosVendas(agendadosFilters),
       ]);
 
       // Aplicar filtro de data específica se fornecido
       let pendentesFiltrados = pendenteData;
-      
+
       if (specificDate) {
-        pendentesFiltrados = pendenteData.filter(record => {
+        pendentesFiltrados = pendenteData.filter((record) => {
           if (!record.data) return false;
           // Comparar strings diretas no formato YYYY-MM-DD
-          const dataStr = record.data.split('T')[0]; // Garante formato YYYY-MM-DD
+          const dataStr = record.data.split("T")[0]; // Garante formato YYYY-MM-DD
           return dataStr === specificDate;
         });
       }
@@ -266,7 +275,7 @@ const PosVendasPage: React.FC = () => {
       setMetrics(metricsData);
       setPendentesProfissional(pendentesFiltrados);
     } catch (error) {
-      console.error('Erro ao carregar pós-vendas:', error);
+      console.error("Erro ao carregar pós-vendas:", error);
     } finally {
       setLoading(false);
     }
@@ -274,111 +283,109 @@ const PosVendasPage: React.FC = () => {
 
   // Realtime Subscription para pos_vendas
   useRealtimeSubscription<PosVenda>({
-    table: 'pos_vendas',
+    table: "pos_vendas",
     filter: (record) => {
       // Filtrar por unidade (se não for super_admin sem unidade)
-      if (selectedUnit && selectedUnit.id !== 'ALL' && record.unit_id !== selectedUnit.id) {
+      if (selectedUnit && selectedUnit.id !== "ALL" && record.unit_id !== selectedUnit.id) {
         return false;
       }
-      
+
       // Filtrar por período
       if (record.data) {
-        const [year, month] = selectedPeriod.split('-');
+        const [year, month] = selectedPeriod.split("-");
         const recordDate = new Date(record.data);
         const recordMonth = recordDate.getMonth() + 1;
         const recordYear = recordDate.getFullYear();
-        
+
         if (recordYear !== parseInt(year) || recordMonth !== parseInt(month)) {
           return false;
         }
       }
-      
+
       return true;
     },
     callbacks: {
       onInsert: (newRecord) => {
-        setAllRecords(prev => [...prev, newRecord]);
-        
+        setAllRecords((prev) => [...prev, newRecord]);
+
         // Se for pendente, adicionar à lista de pendentes com profissional
-        if (newRecord.status === 'pendente') {
+        if (newRecord.status === "pendente") {
           loadData(); // Recarregar para pegar o join com profissional
         }
       },
       onUpdate: (updatedRecord) => {
-        setAllRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
-        
+        setAllRecords((prev) => prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r)));
+
         // Atualizar também na lista de pendentes se aplicável
-        setPendentesProfissional(prev => 
-          prev.map(r => r.id === updatedRecord.id ? { ...r, ...updatedRecord } : r)
+        setPendentesProfissional((prev) =>
+          prev.map((r) => (r.id === updatedRecord.id ? { ...r, ...updatedRecord } : r)),
         );
-        
+
         // Atualizar contatados e finalizados
-        if (updatedRecord.status === 'contatado') {
-          setContatadosRecords(prev => {
-            const exists = prev.some(r => r.id === updatedRecord.id);
+        if (updatedRecord.status === "contatado") {
+          setContatadosRecords((prev) => {
+            const exists = prev.some((r) => r.id === updatedRecord.id);
             if (exists) {
-              return prev.map(r => r.id === updatedRecord.id ? updatedRecord : r);
+              return prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r));
             } else {
               return [...prev, updatedRecord];
             }
           });
-          setFinalizadosRecords(prev => prev.filter(r => r.id !== updatedRecord.id));
-        } else if (updatedRecord.status === 'finalizado') {
-          setFinalizadosRecords(prev => {
-            const exists = prev.some(r => r.id === updatedRecord.id);
+          setFinalizadosRecords((prev) => prev.filter((r) => r.id !== updatedRecord.id));
+        } else if (updatedRecord.status === "finalizado") {
+          setFinalizadosRecords((prev) => {
+            const exists = prev.some((r) => r.id === updatedRecord.id);
             if (exists) {
-              return prev.map(r => r.id === updatedRecord.id ? updatedRecord : r);
+              return prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r));
             } else {
               return [...prev, updatedRecord];
             }
           });
-          setContatadosRecords(prev => prev.filter(r => r.id !== updatedRecord.id));
+          setContatadosRecords((prev) => prev.filter((r) => r.id !== updatedRecord.id));
         } else {
           // Se mudou para pendente, remover de contatados/finalizados
-          setContatadosRecords(prev => prev.filter(r => r.id !== updatedRecord.id));
-          setFinalizadosRecords(prev => prev.filter(r => r.id !== updatedRecord.id));
+          setContatadosRecords((prev) => prev.filter((r) => r.id !== updatedRecord.id));
+          setFinalizadosRecords((prev) => prev.filter((r) => r.id !== updatedRecord.id));
         }
       },
       onDelete: (deletedRecord) => {
-        setAllRecords(prev => prev.filter(r => r.id !== deletedRecord.id));
-        setPendentesProfissional(prev => prev.filter(r => r.id !== deletedRecord.id));
-        setContatadosRecords(prev => prev.filter(r => r.id !== deletedRecord.id));
-        setFinalizadosRecords(prev => prev.filter(r => r.id !== deletedRecord.id));
-      }
+        setAllRecords((prev) => prev.filter((r) => r.id !== deletedRecord.id));
+        setPendentesProfissional((prev) => prev.filter((r) => r.id !== deletedRecord.id));
+        setContatadosRecords((prev) => prev.filter((r) => r.id !== deletedRecord.id));
+        setFinalizadosRecords((prev) => prev.filter((r) => r.id !== deletedRecord.id));
+      },
     },
-    enabled: !loading // Apenas habilitar após carregamento inicial
+    enabled: !loading, // Apenas habilitar após carregamento inicial
   });
 
   // Filtrar registros por status
   const getRecordsByStatus = (status: string): PosVenda[] => {
-    return allRecords.filter(record => record.status === status);
+    return allRecords.filter((record) => record.status === status);
   };
 
   // Filtrar pendentes apenas até o dia anterior (ontem) E dentro do mês selecionado
   const getPendentesFiltrados = (): PosVenda[] => {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0); // Zera as horas para comparar apenas a data
-    
+
     // Extrair ano e mês do período selecionado
-    const [year, month] = selectedPeriod.split('-');
+    const [year, month] = selectedPeriod.split("-");
     const startOfMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
     startOfMonth.setHours(0, 0, 0, 0);
-    
+
     const endOfMonth = new Date(parseInt(year), parseInt(month), 0);
     endOfMonth.setHours(23, 59, 59, 999);
-    
-    return getRecordsByStatus('pendente').filter(record => {
+
+    return getRecordsByStatus("pendente").filter((record) => {
       if (!record.data) return false;
       // Criar data sem conversão de timezone
-      const recordDate = new Date(record.data + 'T00:00:00');
+      const recordDate = new Date(record.data + "T00:00:00");
       recordDate.setHours(0, 0, 0, 0);
-      
+
       // Retorna apenas registros:
       // 1. Dentro do mês selecionado
       // 2. Com data anterior a hoje
-      return recordDate >= startOfMonth && 
-             recordDate <= endOfMonth && 
-             recordDate < hoje;
+      return recordDate >= startOfMonth && recordDate <= endOfMonth && recordDate < hoje;
     });
   };
 
@@ -391,12 +398,13 @@ const PosVendasPage: React.FC = () => {
   // Filtrar pela busca (aplicado à lista de pendentes com profissional)
   const pendentesFiltradosPorBusca = useMemo(() => {
     if (!searchTerm.trim()) return pendentesProfissional;
-    
+
     const term = searchTerm.toLowerCase();
-    return pendentesProfissional.filter(record => 
-      (record.nome?.toLowerCase() || '').includes(term) ||
-      (record.ATENDIMENTO_ID?.toLowerCase() || '').includes(term) ||
-      (record.PROFISSIONAL?.toLowerCase() || '').includes(term)
+    return pendentesProfissional.filter(
+      (record) =>
+        (record.nome?.toLowerCase() || "").includes(term) ||
+        (record.ATENDIMENTO_ID?.toLowerCase() || "").includes(term) ||
+        (record.PROFISSIONAL?.toLowerCase() || "").includes(term),
     );
   }, [pendentesProfissional, searchTerm]);
 
@@ -412,22 +420,22 @@ const PosVendasPage: React.FC = () => {
   const pendentesPaginados = pendentesFiltradosPorBusca.slice(startIndex, endIndex);
 
   const handlePreviousPage = () => {
-    setCurrentPage(prev => Math.max(1, prev - 1));
+    setCurrentPage((prev) => Math.max(1, prev - 1));
   };
 
   const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(totalPages, prev + 1));
+    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente excluir este registro?')) return;
+    if (!confirm("Deseja realmente excluir este registro?")) return;
 
     try {
       await deletePosVenda(id);
       loadData();
     } catch (error) {
-      console.error('Erro ao deletar:', error);
-      alert('Erro ao deletar registro');
+      console.error("Erro ao deletar:", error);
+      alert("Erro ao deletar registro");
     }
   };
 
@@ -448,49 +456,54 @@ const PosVendasPage: React.FC = () => {
 
   const handleSendWebhook = async (record: PosVenda & { PROFISSIONAL: string | null }) => {
     if (!posVendasWebhook) {
-      setWebhookFeedback({ type: 'error', message: 'Webhook não configurado para este módulo' });
+      setWebhookFeedback({ type: "error", message: "Webhook não configurado para este módulo" });
       return;
     }
 
     if (!record.ATENDIMENTO_ID) {
-      setWebhookFeedback({ type: 'error', message: 'ATENDIMENTO_ID não disponível' });
+      setWebhookFeedback({ type: "error", message: "ATENDIMENTO_ID não disponível" });
       return;
     }
 
-    setSendingWebhook(prev => new Set(prev).add(record.id));
+    setSendingWebhook((prev) => new Set(prev).add(record.id));
 
     try {
       // Busca o valor de conexao da unidade
-      const { fetchConexao } = await import('../../services/units/unitKeys.service');
+      const { fetchConexao } = await import("../../services/units/unitKeys.service");
       const conexao = selectedUnit ? await fetchConexao(selectedUnit.id) : null;
 
       // Timestamp da ação (ISO 8601)
       const timestamp = new Date().toISOString();
 
       const payload = {
-        action: 'pos_vendas',
+        action: "pos_vendas",
         ATENDIMENTO_ID: record.ATENDIMENTO_ID,
         unit_id: record.unit_id,
         conexao,
         usuario_email: profile?.email || null,
-        timestamp
+        timestamp,
       };
 
       let usedFallback = false;
       try {
         const resp = await fetch(posVendasWebhook, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
         if (!resp.ok) {
-          const text = await resp.text().catch(() => '');
-          throw new Error(`Falha HTTP ${resp.status}${text ? ' - ' + text.slice(0, 140) : ''}`);
+          const text = await resp.text().catch(() => "");
+          throw new Error(`Falha HTTP ${resp.status}${text ? " - " + text.slice(0, 140) : ""}`);
         }
-        setWebhookFeedback({ type: 'success', message: 'Pós venda enviado com sucesso!' });
+        setWebhookFeedback({ type: "success", message: "Pós venda enviado com sucesso!" });
       } catch (primaryErr: any) {
-        const msg = primaryErr?.message || '';
-        if (msg.includes('Failed to fetch') || msg.includes('CORS') || msg.includes('NetworkError') || msg.includes('TypeError')) {
+        const msg = primaryErr?.message || "";
+        if (
+          msg.includes("Failed to fetch") ||
+          msg.includes("CORS") ||
+          msg.includes("NetworkError") ||
+          msg.includes("TypeError")
+        ) {
           usedFallback = true;
         } else {
           throw primaryErr;
@@ -499,26 +512,26 @@ const PosVendasPage: React.FC = () => {
 
       if (usedFallback) {
         const url = new URL(posVendasWebhook);
-        url.searchParams.set('action', 'pos_vendas');
-        url.searchParams.set('aid', record.ATENDIMENTO_ID);
-        url.searchParams.set('uid', record.unit_id || '');
-        url.searchParams.set('cx', conexao || '');
-        if (profile?.email) url.searchParams.set('ue', profile.email);
-        url.searchParams.set('ts', timestamp);
-        const r = await fetch(url.toString(), { method: 'GET' });
+        url.searchParams.set("action", "pos_vendas");
+        url.searchParams.set("aid", record.ATENDIMENTO_ID);
+        url.searchParams.set("uid", record.unit_id || "");
+        url.searchParams.set("cx", conexao || "");
+        if (profile?.email) url.searchParams.set("ue", profile.email);
+        url.searchParams.set("ts", timestamp);
+        const r = await fetch(url.toString(), { method: "GET" });
         if (!r.ok) throw new Error(`Fallback GET falhou HTTP ${r.status}`);
-        setWebhookFeedback({ type: 'success', message: 'Webhook enviado via fallback GET!' });
+        setWebhookFeedback({ type: "success", message: "Webhook enviado via fallback GET!" });
       }
     } catch (err: any) {
-      let msg = 'Erro ao enviar webhook.';
+      let msg = "Erro ao enviar webhook.";
       if (err?.message) {
-        if (err.message.includes('Failed to fetch')) msg = 'Falha de rede/DNS ao contatar webhook.';
+        if (err.message.includes("Failed to fetch")) msg = "Falha de rede/DNS ao contatar webhook.";
         else msg = err.message;
       }
-      console.error('Erro ao enviar webhook pós-vendas:', err);
-      setWebhookFeedback({ type: 'error', message: msg });
+      console.error("Erro ao enviar webhook pós-vendas:", err);
+      setWebhookFeedback({ type: "error", message: msg });
     } finally {
-      setSendingWebhook(prev => {
+      setSendingWebhook((prev) => {
         const next = new Set(prev);
         next.delete(record.id);
         return next;
@@ -526,7 +539,7 @@ const PosVendasPage: React.FC = () => {
     }
   };
 
-  const handleOpenScheduleModal = (record: PosVenda) => {
+  const handleOpenScheduleModal = (record: PosVenda & { PROFISSIONAL: string | null }) => {
     setSchedulingRecord(record);
     setIsScheduleModalOpen(true);
   };
@@ -540,17 +553,18 @@ const PosVendasPage: React.FC = () => {
     if (!schedulingRecord) return;
 
     try {
-      const { updatePosVenda, createPosVenda, getPosVendasByAtendimento } = await import('../../services/posVendas/posVendas.service');
-      
+      const { updatePosVenda, createPosVenda, getPosVendasByAtendimento } =
+        await import("../../services/posVendas/posVendas.service");
+
       // Verifica se o registro já existe na tabela pos_vendas
-      const existingRecords = await getPosVendasByAtendimento(schedulingRecord.ATENDIMENTO_ID || '');
-      
+      const existingRecords = await getPosVendasByAtendimento(schedulingRecord.ATENDIMENTO_ID || "");
+
       if (existingRecords && existingRecords.length > 0) {
         // Atualiza registro existente com status "agendado"
         await updatePosVenda(existingRecords[0].id, {
           data_agendamento: dataAgendamento,
           horario_agendamento: horarioAgendamento,
-          status: 'agendado'
+          status: "agendado",
         });
       } else {
         // Cria novo registro com agendamento e status "agendado"
@@ -560,94 +574,90 @@ const PosVendasPage: React.FC = () => {
           nome: schedulingRecord.nome,
           contato: schedulingRecord.contato,
           unit_id: schedulingRecord.unit_id,
-          data: schedulingRecord.data || new Date().toISOString().split('T')[0],
-          status: 'agendado',
+          data: schedulingRecord.data || new Date().toISOString().split("T")[0],
+          status: "agendado",
           nota: null,
           reagendou: false,
           feedback: null,
           data_agendamento: dataAgendamento,
-          horario_agendamento: horarioAgendamento
+          horario_agendamento: horarioAgendamento,
         });
       }
 
-      setWebhookFeedback({ 
-        type: 'success', 
-        message: `Agendamento salvo: ${new Date(dataAgendamento + 'T00:00:00').toLocaleDateString('pt-BR')} às ${horarioAgendamento}` 
+      setWebhookFeedback({
+        type: "success",
+        message: `Agendamento salvo: ${new Date(dataAgendamento + "T00:00:00").toLocaleDateString("pt-BR")} às ${horarioAgendamento}`,
       });
-      
+
       handleCloseScheduleModal();
       await loadData();
     } catch (error) {
-      console.error('Erro ao salvar agendamento:', error);
-      setWebhookFeedback({ type: 'error', message: 'Erro ao salvar agendamento' });
+      console.error("Erro ao salvar agendamento:", error);
+      setWebhookFeedback({ type: "error", message: "Erro ao salvar agendamento" });
     }
   };
 
   const handleRemoveSchedule = async (record: PosVenda & { PROFISSIONAL: string | null }) => {
-    if (!confirm('Deseja remover o agendamento deste pós-venda?')) return;
+    if (!confirm("Deseja remover o agendamento deste pós-venda?")) return;
 
     try {
-      const { updatePosVenda, getPosVendasByAtendimento } = await import('../../services/posVendas/posVendas.service');
-      
+      const { updatePosVenda, getPosVendasByAtendimento } = await import("../../services/posVendas/posVendas.service");
+
       // Verifica se o registro existe na tabela pos_vendas
-      const existingRecords = await getPosVendasByAtendimento(record.ATENDIMENTO_ID || '');
-      
+      const existingRecords = await getPosVendasByAtendimento(record.ATENDIMENTO_ID || "");
+
       if (existingRecords && existingRecords.length > 0) {
         await updatePosVenda(existingRecords[0].id, {
           data_agendamento: null,
-          horario_agendamento: null
+          horario_agendamento: null,
         });
 
-        setWebhookFeedback({ 
-          type: 'success', 
-          message: 'Agendamento removido com sucesso!' 
+        setWebhookFeedback({
+          type: "success",
+          message: "Agendamento removido com sucesso!",
         });
-        
+
         await loadData();
       } else {
-        setWebhookFeedback({ 
-          type: 'error', 
-          message: 'Registro não encontrado na base de pós-vendas' 
+        setWebhookFeedback({
+          type: "error",
+          message: "Registro não encontrado na base de pós-vendas",
         });
       }
     } catch (error) {
-      console.error('Erro ao remover agendamento:', error);
-      setWebhookFeedback({ type: 'error', message: 'Erro ao remover agendamento' });
+      console.error("Erro ao remover agendamento:", error);
+      setWebhookFeedback({ type: "error", message: "Erro ao remover agendamento" });
     }
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-';
+    if (!dateStr) return "-";
     // Adiciona T00:00:00 para evitar problemas de timezone com datas tipo DATE
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR');
+    const date = new Date(dateStr + "T00:00:00");
+    return date.toLocaleDateString("pt-BR");
   };
 
   const getStatusBadge = (status: string | null) => {
     const statusMap: Record<string, { label: string; color: string }> = {
-      pendente: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
-      contatado: { label: 'Contatado', color: 'bg-blue-100 text-blue-800' },
-      finalizado: { label: 'Finalizado', color: 'bg-green-100 text-green-800' }
+      pendente: { label: "Pendente", color: "bg-yellow-100 text-yellow-800" },
+      contatado: { label: "Contatado", color: "bg-blue-100 text-blue-800" },
+      finalizado: { label: "Finalizado", color: "bg-green-100 text-green-800" },
     };
 
-    const statusInfo = status ? statusMap[status] : { label: '-', color: 'bg-gray-100 text-gray-800' };
+    const statusInfo = status ? statusMap[status] : { label: "-", color: "bg-gray-100 text-gray-800" };
 
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
-        {statusInfo.label}
-      </span>
-    );
+    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>{statusInfo.label}</span>;
   };
 
   const renderStars = (nota: number | null) => {
-    if (!nota) return '-';
+    if (!nota) return "-";
     return (
       <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map(star => (
+        {[1, 2, 3, 4, 5].map((star) => (
           <Icon
             key={star}
-            name={star <= nota ? 'Star' : 'Star'}
-            className={`w-4 h-4 ${star <= nota ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+            name={star <= nota ? "Star" : "Star"}
+            className={`w-4 h-4 ${star <= nota ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
           />
         ))}
       </div>
@@ -663,9 +673,7 @@ const PosVendasPage: React.FC = () => {
             <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
               Data
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-              ID
-            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">ID</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
               Cliente
             </th>
@@ -683,29 +691,29 @@ const PosVendasPage: React.FC = () => {
             </tr>
           ) : (
             records.map((record) => (
-              <tr 
-                key={record.id} 
+              <tr
+                key={record.id}
                 className="hover:bg-bg-tertiary transition-colors cursor-pointer"
                 onDoubleClick={() => handleEdit(record)}
                 title="Duplo clique para editar"
               >
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">
-                  {formatDate(record.data)}
-                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">{formatDate(record.data)}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary font-mono">
-                  {record.ATENDIMENTO_ID || '-'}
+                  {record.ATENDIMENTO_ID || "-"}
                 </td>
                 <td className="px-4 py-3 text-sm text-text-primary">
                   <div>
-                    <p className="font-medium">{record.nome || '-'}</p>
+                    <p className="font-medium">{record.nome || "-"}</p>
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">
-                  {record.updated_at ? new Date(record.updated_at).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  }) : '-'}
+                  {record.updated_at
+                    ? new Date(record.updated_at).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })
+                    : "-"}
                 </td>
               </tr>
             ))
@@ -714,7 +722,7 @@ const PosVendasPage: React.FC = () => {
       </table>
       {records.length > 0 && (
         <div className="px-4 py-3 bg-bg-tertiary text-center text-sm text-text-secondary">
-          Mostrando {records.length} registro{records.length !== 1 ? 's' : ''}
+          Mostrando {records.length} registro{records.length !== 1 ? "s" : ""}
         </div>
       )}
     </div>
@@ -729,9 +737,7 @@ const PosVendasPage: React.FC = () => {
             <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
               Data
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-              ID
-            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">ID</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
               Cliente
             </th>
@@ -758,27 +764,21 @@ const PosVendasPage: React.FC = () => {
             </tr>
           ) : (
             records.map((record) => (
-              <tr 
-                key={record.id} 
+              <tr
+                key={record.id}
                 className="hover:bg-bg-tertiary transition-colors cursor-pointer"
                 onDoubleClick={() => handleEdit(record)}
                 title="Duplo clique para editar"
               >
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">
-                  {formatDate(record.data)}
-                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">{formatDate(record.data)}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary font-mono">
-                  {record.ATENDIMENTO_ID || '-'}
+                  {record.ATENDIMENTO_ID || "-"}
                 </td>
                 <td className="px-4 py-3 text-sm text-text-primary">
-                  <p className="font-medium">{(record as any).CLIENTE || record.nome || '-'}</p>
+                  <p className="font-medium">{(record as any).CLIENTE || record.nome || "-"}</p>
                 </td>
-                <td className="px-4 py-3 text-sm text-text-primary">
-                  {(record as any).PROFISSIONAL || '-'}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  {renderStars(record.nota)}
-                </td>
+                <td className="px-4 py-3 text-sm text-text-primary">{(record as any).PROFISSIONAL || "-"}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{renderStars(record.nota)}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">
                   {record.reagendou ? (
                     <Icon name="Check" className="w-5 h-5 text-green-500" />
@@ -787,11 +787,13 @@ const PosVendasPage: React.FC = () => {
                   )}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">
-                  {record.updated_at ? new Date(record.updated_at).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  }) : '-'}
+                  {record.updated_at
+                    ? new Date(record.updated_at).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })
+                    : "-"}
                 </td>
               </tr>
             ))
@@ -800,7 +802,7 @@ const PosVendasPage: React.FC = () => {
       </table>
       {records.length > 0 && (
         <div className="px-4 py-3 bg-bg-tertiary text-center text-sm text-text-secondary">
-          Mostrando {records.length} registro{records.length !== 1 ? 's' : ''}
+          Mostrando {records.length} registro{records.length !== 1 ? "s" : ""}
         </div>
       )}
     </div>
@@ -844,26 +846,18 @@ const PosVendasPage: React.FC = () => {
           ) : (
             records.slice(0, 10).map((record) => (
               <tr key={record.id} className="hover:bg-bg-tertiary transition-colors">
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">
-                  {formatDate(record.data)}
-                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">{formatDate(record.data)}</td>
                 <td className="px-4 py-3 text-sm text-text-primary">
                   <div>
-                    <p className="font-medium">{(record as any).CLIENTE || record.nome || '-'}</p>
+                    <p className="font-medium">{(record as any).CLIENTE || record.nome || "-"}</p>
                     {record.ATENDIMENTO_ID && (
                       <p className="text-xs text-text-secondary">ID: {record.ATENDIMENTO_ID}</p>
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-text-primary">
-                  {(record as any).PROFISSIONAL || '-'}
-                </td>
-                <td className="px-4 py-3 text-sm text-text-primary">
-                  {record.contato || '-'}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  {renderStars(record.nota)}
-                </td>
+                <td className="px-4 py-3 text-sm text-text-primary">{(record as any).PROFISSIONAL || "-"}</td>
+                <td className="px-4 py-3 text-sm text-text-primary">{record.contato || "-"}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{renderStars(record.nota)}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-text-primary">
                   {record.reagendou ? (
                     <Icon name="Check" className="w-5 h-5 text-green-500" />
@@ -936,7 +930,7 @@ const PosVendasPage: React.FC = () => {
             {searchTerm && (
               <button
                 type="button"
-                onClick={() => setSearchTerm('')}
+                onClick={() => setSearchTerm("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
                 aria-label="Limpar busca"
               >
@@ -951,19 +945,27 @@ const PosVendasPage: React.FC = () => {
                 value={specificDate}
                 onChange={(e) => setSpecificDate(e.target.value)}
                 className="absolute inset-0 opacity-0 cursor-pointer"
-                style={{ 
-                  width: '40px',
-                  height: '40px'
+                style={{
+                  width: "40px",
+                  height: "40px",
                 }}
-                title={specificDate ? `Filtrado por: ${new Date(specificDate).toLocaleDateString('pt-BR')}` : 'Filtrar por data'}
+                title={
+                  specificDate
+                    ? `Filtrado por: ${new Date(specificDate).toLocaleDateString("pt-BR")}`
+                    : "Filtrar por data"
+                }
               />
               <button
                 className={`p-2 rounded-md border transition-colors ${
-                  specificDate 
-                    ? 'bg-primary text-white border-primary' 
-                    : 'bg-bg-secondary text-text-secondary border-border-primary'
+                  specificDate
+                    ? "bg-primary text-white border-primary"
+                    : "bg-bg-secondary text-text-secondary border-border-primary"
                 }`}
-                title={specificDate ? `Filtrado por: ${new Date(specificDate).toLocaleDateString('pt-BR')}` : 'Filtrar por data'}
+                title={
+                  specificDate
+                    ? `Filtrado por: ${new Date(specificDate).toLocaleDateString("pt-BR")}`
+                    : "Filtrar por data"
+                }
               >
                 <Icon name="Calendar" className="w-5 h-5" />
               </button>
@@ -978,7 +980,7 @@ const PosVendasPage: React.FC = () => {
             </div>
             {specificDate && (
               <button
-                onClick={() => setSpecificDate('')}
+                onClick={() => setSpecificDate("")}
                 className="p-2 text-text-secondary hover:text-text-primary transition-colors"
                 title="Limpar filtro de data"
               >
@@ -993,11 +995,11 @@ const PosVendasPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card Geral */}
         <button
-          onClick={() => setActiveCard('geral')}
+          onClick={() => setActiveCard("geral")}
           className={`p-3 rounded-lg border transition-all ${
-            activeCard === 'geral'
-              ? 'bg-accent-primary text-white border-accent-primary shadow-lg'
-              : 'bg-bg-secondary border-border-primary hover:border-accent-primary'
+            activeCard === "geral"
+              ? "bg-accent-primary text-white border-accent-primary shadow-lg"
+              : "bg-bg-secondary border-border-primary hover:border-accent-primary"
           }`}
         >
           <div className="flex items-center gap-2">
@@ -1008,17 +1010,19 @@ const PosVendasPage: React.FC = () => {
 
         {/* Card Pendente */}
         <button
-          onClick={() => setActiveCard('pendente')}
+          onClick={() => setActiveCard("pendente")}
           className={`p-3 rounded-lg border transition-all ${
-            activeCard === 'pendente'
-              ? 'bg-amber-500 text-white border-amber-500 shadow-lg'
-              : 'bg-bg-secondary border-border-primary hover:border-amber-500'
+            activeCard === "pendente"
+              ? "bg-amber-500 text-white border-amber-500 shadow-lg"
+              : "bg-bg-secondary border-border-primary hover:border-amber-500"
           }`}
         >
           <div className="flex items-center gap-2">
             <Icon name="Clock" className="w-5 h-5" />
             <span className="text-sm font-medium">Pendente</span>
-            <span className={`ml-auto text-lg font-bold ${activeCard === 'pendente' ? 'text-white' : 'text-amber-500'}`}>
+            <span
+              className={`ml-auto text-lg font-bold ${activeCard === "pendente" ? "text-white" : "text-amber-500"}`}
+            >
               {pendentesProfissional.length}
             </span>
           </div>
@@ -1026,17 +1030,19 @@ const PosVendasPage: React.FC = () => {
 
         {/* Card Agendado */}
         <button
-          onClick={() => setActiveCard('agendado')}
+          onClick={() => setActiveCard("agendado")}
           className={`p-3 rounded-lg border transition-all ${
-            activeCard === 'agendado'
-              ? 'bg-purple-500 text-white border-purple-500 shadow-lg'
-              : 'bg-bg-secondary border-border-primary hover:border-purple-500'
+            activeCard === "agendado"
+              ? "bg-purple-500 text-white border-purple-500 shadow-lg"
+              : "bg-bg-secondary border-border-primary hover:border-purple-500"
           }`}
         >
           <div className="flex items-center gap-2">
             <Icon name="CalendarClock" className="w-5 h-5" />
             <span className="text-sm font-medium">Agendado</span>
-            <span className={`ml-auto text-lg font-bold ${activeCard === 'agendado' ? 'text-white' : 'text-purple-500'}`}>
+            <span
+              className={`ml-auto text-lg font-bold ${activeCard === "agendado" ? "text-white" : "text-purple-500"}`}
+            >
               {agendados.length}
             </span>
           </div>
@@ -1044,17 +1050,19 @@ const PosVendasPage: React.FC = () => {
 
         {/* Card Contatado */}
         <button
-          onClick={() => setActiveCard('contatado')}
+          onClick={() => setActiveCard("contatado")}
           className={`p-3 rounded-lg border transition-all ${
-            activeCard === 'contatado'
-              ? 'bg-brand-cyan text-white border-brand-cyan shadow-lg'
-              : 'bg-bg-secondary border-border-primary hover:border-brand-cyan'
+            activeCard === "contatado"
+              ? "bg-brand-cyan text-white border-brand-cyan shadow-lg"
+              : "bg-bg-secondary border-border-primary hover:border-brand-cyan"
           }`}
         >
           <div className="flex items-center gap-2">
             <Icon name="Phone" className="w-5 h-5" />
             <span className="text-sm font-medium">Contatado</span>
-            <span className={`ml-auto text-lg font-bold ${activeCard === 'contatado' ? 'text-white' : 'text-brand-cyan'}`}>
+            <span
+              className={`ml-auto text-lg font-bold ${activeCard === "contatado" ? "text-white" : "text-brand-cyan"}`}
+            >
               {contatados.length}
             </span>
           </div>
@@ -1062,17 +1070,19 @@ const PosVendasPage: React.FC = () => {
 
         {/* Card Finalizado */}
         <button
-          onClick={() => setActiveCard('finalizados')}
+          onClick={() => setActiveCard("finalizados")}
           className={`p-3 rounded-lg border transition-all ${
-            activeCard === 'finalizados'
-              ? 'bg-brand-green text-white border-brand-green shadow-lg'
-              : 'bg-bg-secondary border-border-primary hover:border-brand-green'
+            activeCard === "finalizados"
+              ? "bg-brand-green text-white border-brand-green shadow-lg"
+              : "bg-bg-secondary border-border-primary hover:border-brand-green"
           }`}
         >
           <div className="flex items-center gap-2">
             <Icon name="CheckCircle" className="w-5 h-5" />
             <span className="text-sm font-medium">Finalizado</span>
-            <span className={`ml-auto text-lg font-bold ${activeCard === 'finalizados' ? 'text-white' : 'text-brand-green'}`}>
+            <span
+              className={`ml-auto text-lg font-bold ${activeCard === "finalizados" ? "text-white" : "text-brand-green"}`}
+            >
               {finalizados.length}
             </span>
           </div>
@@ -1081,7 +1091,7 @@ const PosVendasPage: React.FC = () => {
 
       {/* Conteúdo do Card Ativo */}
       <div className="bg-bg-secondary rounded-lg border border-border-primary overflow-hidden">
-        {activeCard === 'geral' && metrics && (
+        {activeCard === "geral" && metrics && (
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Gráfico de Pizza - Status de Avaliações */}
@@ -1097,18 +1107,16 @@ const PosVendasPage: React.FC = () => {
                         const totalContatados = metrics.totalContatados;
                         const totalFinalizados = metrics.totalFinalizados;
                         const total = totalPendentes + totalAgendados + totalContatados + totalFinalizados;
-                        
+
                         if (total === 0) {
-                          return (
-                            <circle cx="100" cy="100" r="80" fill="#e5e7eb" />
-                          );
+                          return <circle cx="100" cy="100" r="80" fill="#e5e7eb" />;
                         }
-                        
+
                         const pendentesPercent = (totalPendentes / total) * 100;
                         const agendadosPercent = (totalAgendados / total) * 100;
                         const contatadosPercent = (totalContatados / total) * 100;
                         const finalizadosPercent = (totalFinalizados / total) * 100;
-                        
+
                         // Calcular ângulos acumulados
                         let currentAngle = 0;
                         const pendentesAngle = currentAngle + (pendentesPercent / 100) * 360;
@@ -1118,21 +1126,21 @@ const PosVendasPage: React.FC = () => {
                         const contatadosAngle = currentAngle + (contatadosPercent / 100) * 360;
                         currentAngle = contatadosAngle;
                         const finalizadosAngle = 360; // Última fatia vai até 360
-                        
+
                         // Função para calcular coordenadas do arco
                         const getArcPath = (startAngle: number, endAngle: number) => {
                           const start = (startAngle - 90) * (Math.PI / 180);
                           const end = (endAngle - 90) * (Math.PI / 180);
                           const largeArc = endAngle - startAngle > 180 ? 1 : 0;
-                          
+
                           const x1 = 100 + 80 * Math.cos(start);
                           const y1 = 100 + 80 * Math.sin(start);
                           const x2 = 100 + 80 * Math.cos(end);
                           const y2 = 100 + 80 * Math.sin(end);
-                          
+
                           return `M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`;
                         };
-                        
+
                         return (
                           <>
                             {/* Fatia Pendentes (amarelo) */}
@@ -1167,10 +1175,10 @@ const PosVendasPage: React.FC = () => {
                                 className="transition-all hover:opacity-80"
                               />
                             )}
-                            
+
                             {/* Gráfico de pizza menor no centro (hole) */}
                             <circle cx="100" cy="100" r="50" fill="currentColor" className="fill-bg-tertiary" />
-                            
+
                             {/* Texto central com total */}
                             <text x="100" y="95" textAnchor="middle" className="fill-text-primary font-bold text-2xl">
                               {total}
@@ -1183,7 +1191,7 @@ const PosVendasPage: React.FC = () => {
                       })()}
                     </svg>
                   </div>
-                  
+
                   {/* Legenda - Linha horizontal compacta */}
                   <div className="mt-4 flex flex-wrap justify-center gap-4 w-full">
                     <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary rounded-lg border border-border-secondary">
@@ -1193,14 +1201,24 @@ const PosVendasPage: React.FC = () => {
                         <div className="flex items-baseline gap-1">
                           <span className="text-base font-bold text-text-primary">{pendentes.length}</span>
                           <span className="text-[10px] text-text-secondary">
-                            ({pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados > 0 
-                              ? Math.round((pendentes.length / (pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados)) * 100)
-                              : 0}%)
+                            (
+                            {pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados >
+                            0
+                              ? Math.round(
+                                  (pendentes.length /
+                                    (pendentes.length +
+                                      agendados.length +
+                                      metrics.totalContatados +
+                                      metrics.totalFinalizados)) *
+                                    100,
+                                )
+                              : 0}
+                            %)
                           </span>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary rounded-lg border border-border-secondary">
                       <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                       <div className="flex flex-col">
@@ -1208,14 +1226,24 @@ const PosVendasPage: React.FC = () => {
                         <div className="flex items-baseline gap-1">
                           <span className="text-base font-bold text-text-primary">{agendados.length}</span>
                           <span className="text-[10px] text-text-secondary">
-                            ({pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados > 0 
-                              ? Math.round((agendados.length / (pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados)) * 100)
-                              : 0}%)
+                            (
+                            {pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados >
+                            0
+                              ? Math.round(
+                                  (agendados.length /
+                                    (pendentes.length +
+                                      agendados.length +
+                                      metrics.totalContatados +
+                                      metrics.totalFinalizados)) *
+                                    100,
+                                )
+                              : 0}
+                            %)
                           </span>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary rounded-lg border border-border-secondary">
                       <div className="w-3 h-3 rounded-full bg-brand-cyan"></div>
                       <div className="flex flex-col">
@@ -1223,14 +1251,24 @@ const PosVendasPage: React.FC = () => {
                         <div className="flex items-baseline gap-1">
                           <span className="text-base font-bold text-text-primary">{metrics.totalContatados}</span>
                           <span className="text-[10px] text-text-secondary">
-                            ({pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados > 0 
-                              ? Math.round((metrics.totalContatados / (pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados)) * 100)
-                              : 0}%)
+                            (
+                            {pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados >
+                            0
+                              ? Math.round(
+                                  (metrics.totalContatados /
+                                    (pendentes.length +
+                                      agendados.length +
+                                      metrics.totalContatados +
+                                      metrics.totalFinalizados)) *
+                                    100,
+                                )
+                              : 0}
+                            %)
                           </span>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 px-3 py-2 bg-bg-primary rounded-lg border border-border-secondary">
                       <div className="w-3 h-3 rounded-full bg-brand-green"></div>
                       <div className="flex flex-col">
@@ -1238,9 +1276,19 @@ const PosVendasPage: React.FC = () => {
                         <div className="flex items-baseline gap-1">
                           <span className="text-base font-bold text-text-primary">{metrics.totalFinalizados}</span>
                           <span className="text-[10px] text-text-secondary">
-                            ({pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados > 0 
-                              ? Math.round((metrics.totalFinalizados / (pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados)) * 100)
-                              : 0}%)
+                            (
+                            {pendentes.length + agendados.length + metrics.totalContatados + metrics.totalFinalizados >
+                            0
+                              ? Math.round(
+                                  (metrics.totalFinalizados /
+                                    (pendentes.length +
+                                      agendados.length +
+                                      metrics.totalContatados +
+                                      metrics.totalFinalizados)) *
+                                    100,
+                                )
+                              : 0}
+                            %)
                           </span>
                         </div>
                       </div>
@@ -1257,9 +1305,12 @@ const PosVendasPage: React.FC = () => {
                     <span className="text-sm text-text-secondary">Nota Média:</span>
                     <span className="text-lg font-bold text-text-primary">
                       {(() => {
-                        const somaNotas = metrics.distribuicaoNotas.reduce((acc, { nota, count }) => acc + (nota * count), 0);
+                        const somaNotas = metrics.distribuicaoNotas.reduce(
+                          (acc, { nota, count }) => acc + nota * count,
+                          0,
+                        );
                         const totalRespostas = metrics.distribuicaoNotas.reduce((acc, { count }) => acc + count, 0);
-                        const media = totalRespostas > 0 ? (somaNotas / totalRespostas).toFixed(1) : '0.0';
+                        const media = totalRespostas > 0 ? (somaNotas / totalRespostas).toFixed(1) : "0.0";
                         return media;
                       })()}
                     </span>
@@ -1270,13 +1321,14 @@ const PosVendasPage: React.FC = () => {
                   {[...metrics.distribuicaoNotas].reverse().map(({ nota, count }) => {
                     const total = metrics.totalContatos;
                     const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                    const heightPercent = total > 0 ? (count / Math.max(...metrics.distribuicaoNotas.map(d => d.count))) * 100 : 0;
-                    
+                    const heightPercent =
+                      total > 0 ? (count / Math.max(...metrics.distribuicaoNotas.map((d) => d.count))) * 100 : 0;
+
                     return (
                       <div key={nota} className="flex-1 flex flex-col items-center gap-2">
                         {/* Barra */}
-                        <div className="w-full bg-bg-primary rounded-t-lg relative group" style={{ height: '200px' }}>
-                          <div 
+                        <div className="w-full bg-bg-primary rounded-t-lg relative group" style={{ height: "200px" }}>
+                          <div
                             className="absolute bottom-0 w-full bg-gradient-to-t from-accent-primary to-brand-cyan rounded-t-lg transition-all duration-300 hover:opacity-80"
                             style={{ height: `${heightPercent}%` }}
                           >
@@ -1287,14 +1339,14 @@ const PosVendasPage: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Label com estrelas */}
                         <div className="flex gap-0.5">
-                          {[1, 2, 3, 4, 5].map(star => (
+                          {[1, 2, 3, 4, 5].map((star) => (
                             <Icon
                               key={star}
                               name="Star"
-                              className={`w-3 h-3 ${star <= nota ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                              className={`w-3 h-3 ${star <= nota ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
                             />
                           ))}
                         </div>
@@ -1314,8 +1366,9 @@ const PosVendasPage: React.FC = () => {
                   <span className="text-lg font-bold text-brand-green">
                     {(() => {
                       const totalFinalizados = finalizados.length;
-                      const totalReagendou = finalizados.filter(r => r.reagendou === true).length;
-                      const percentual = totalFinalizados > 0 ? Math.round((totalReagendou / totalFinalizados) * 100) : 0;
+                      const totalReagendou = finalizados.filter((r) => r.reagendou === true).length;
+                      const percentual =
+                        totalFinalizados > 0 ? Math.round((totalReagendou / totalFinalizados) * 100) : 0;
                       return `${percentual}%`;
                     })()}
                   </span>
@@ -1351,8 +1404,8 @@ const PosVendasPage: React.FC = () => {
                       </tr>
                     ) : (
                       finalizados.map((record) => (
-                        <tr 
-                          key={record.id} 
+                        <tr
+                          key={record.id}
                           className="hover:bg-bg-tertiary transition-colors cursor-pointer"
                           onDoubleClick={() => handleEdit(record)}
                           title="Duplo clique para editar"
@@ -1361,19 +1414,17 @@ const PosVendasPage: React.FC = () => {
                             {record.data_finalizacao ? formatDate(record.data_finalizacao) : formatDate(record.data)}
                           </td>
                           <td className="px-3 py-2 text-sm text-text-primary">
-                            {(record as any).CLIENTE || record.nome || '-'}
+                            {(record as any).CLIENTE || record.nome || "-"}
                           </td>
-                          <td className="px-3 py-2 text-sm text-text-primary">
-                            {(record as any).PROFISSIONAL || '-'}
-                          </td>
+                          <td className="px-3 py-2 text-sm text-text-primary">{(record as any).PROFISSIONAL || "-"}</td>
                           <td className="px-3 py-2 text-center">
                             {record.nota ? (
                               <div className="flex items-center justify-center gap-0.5">
-                                {[1, 2, 3, 4, 5].map(star => (
+                                {[1, 2, 3, 4, 5].map((star) => (
                                   <Icon
                                     key={star}
                                     name="Star"
-                                    className={`w-3 h-3 ${star <= record.nota! ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                                    className={`w-3 h-3 ${star <= record.nota! ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
                                   />
                                 ))}
                               </div>
@@ -1398,7 +1449,7 @@ const PosVendasPage: React.FC = () => {
           </div>
         )}
 
-        {activeCard === 'pendente' && (
+        {activeCard === "pendente" && (
           <div>
             {!posVendasWebhook && (
               <div className="mb-4 p-3 rounded-lg bg-orange-100 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800">
@@ -1407,142 +1458,146 @@ const PosVendasPage: React.FC = () => {
                   <div>
                     <p className="font-medium">Webhook não configurado</p>
                     <p className="text-sm text-orange-700 dark:text-orange-400">
-                      Configure a URL do webhook no módulo "Pós-Vendas" em Gerenciar Módulos para habilitar o envio de avaliações.
+                      Configure a URL do webhook no módulo "Pós-Vendas" em Gerenciar Módulos para habilitar o envio de
+                      avaliações.
                     </p>
                   </div>
                 </div>
               </div>
             )}
             {webhookFeedback && (
-              <div className={`mb-4 p-3 rounded-lg ${webhookFeedback.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              <div
+                className={`mb-4 p-3 rounded-lg ${webhookFeedback.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+              >
                 {webhookFeedback.message}
               </div>
             )}
-            
+
             {/* Tabela Desktop */}
             <div className="hidden lg:block overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="w-full">
-              <thead className="sticky top-0 z-10 bg-bg-tertiary shadow-sm">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Data
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    ID
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Cliente
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Profissional
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Ação
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-primary">
-                {pendentesFiltradosPorBusca.length === 0 ? (
+                <thead className="sticky top-0 z-10 bg-bg-tertiary shadow-sm">
                   <tr>
-                    <td colSpan={5} className="px-3 py-6 text-center text-text-secondary">
-                      {searchTerm ? 'Nenhum registro encontrado com esse termo' : 'Nenhum registro pendente'}
-                    </td>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Data
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      ID
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Cliente
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Profissional
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Ação
+                    </th>
                   </tr>
-                ) : (
-                  pendentesPaginados.map((record) => (
-                    <tr 
-                      key={record.id} 
-                      className="hover:bg-bg-tertiary transition-colors cursor-pointer"
-                      onDoubleClick={() => handleEdit(record)}
-                      title="Duplo clique para editar"
-                    >
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-text-primary">
-                        {formatDate(record.data)}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-text-secondary">
-                        {record.ATENDIMENTO_ID || '-'}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-text-primary">
-                        <div>
-                          <p className="font-medium">{record.nome || '-'}</p>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-sm text-text-primary">
-                        {record.PROFISSIONAL || '-'}
-                      </td>
-                      <td className="px-3 py-2">
-                        {record.data_agendamento && record.horario_agendamento ? (
-                          // Exibe informações de agendamento - CENTRALIZADO
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Icon name="Clock" className="w-4 h-4 text-brand-cyan" />
-                              <div className="flex flex-col items-center">
-                                <span className="font-medium text-brand-cyan">Agendado</span>
-                                <span className="text-xs text-text-secondary whitespace-nowrap">
-                                  {new Date(record.data_agendamento + 'T00:00:00').toLocaleDateString('pt-BR')} às {record.horario_agendamento.substring(0, 5)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => handleOpenScheduleModal(record)}
-                                title="Editar agendamento"
-                                className="px-2 py-1 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-1 text-xs"
-                              >
-                                <Icon name="Edit" className="w-3 h-3" />
-                                Editar
-                              </button>
-                              <button
-                                onClick={() => handleRemoveSchedule(record)}
-                                title="Remover agendamento"
-                                className="px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1 text-xs"
-                              >
-                                <Icon name="X" className="w-3 h-3" />
-                                Remover
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          // Exibe botões de ação normais - apenas ícones
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleSendWebhook(record)}
-                              disabled={sendingWebhook.has(record.id) || !posVendasWebhook}
-                              title={!posVendasWebhook ? 'Webhook não configurado para este módulo' : 'Enviar avaliação'}
-                              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
-                            >
-                              {sendingWebhook.has(record.id) ? (
-                                <Icon name="Loader2" className="w-4 h-4 animate-spin" />
-                              ) : !posVendasWebhook ? (
-                                <Icon name="AlertCircle" className="w-4 h-4" />
-                              ) : (
-                                <Icon name="Send" className="w-4 h-4" />
-                              )}
-                            </button>
-                            
-                            <button
-                              onClick={() => handleOpenScheduleModal(record)}
-                              title="Agendar envio"
-                              className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center"
-                            >
-                              <Icon name="CalendarClock" className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
+                </thead>
+                <tbody className="divide-y divide-border-primary">
+                  {pendentesFiltradosPorBusca.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-3 py-6 text-center text-text-secondary">
+                        {searchTerm ? "Nenhum registro encontrado com esse termo" : "Nenhum registro pendente"}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
+                  ) : (
+                    pendentesPaginados.map((record) => (
+                      <tr
+                        key={record.id}
+                        className="hover:bg-bg-tertiary transition-colors cursor-pointer"
+                        onDoubleClick={() => handleEdit(record)}
+                        title="Duplo clique para editar"
+                      >
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-text-primary">
+                          {formatDate(record.data)}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-text-secondary">
+                          {record.ATENDIMENTO_ID || "-"}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-text-primary">
+                          <div>
+                            <p className="font-medium">{record.nome || "-"}</p>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-sm text-text-primary">{record.PROFISSIONAL || "-"}</td>
+                        <td className="px-3 py-2">
+                          {record.data_agendamento && record.horario_agendamento ? (
+                            // Exibe informações de agendamento - CENTRALIZADO
+                            <div className="flex flex-col items-center gap-2">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Icon name="Clock" className="w-4 h-4 text-brand-cyan" />
+                                <div className="flex flex-col items-center">
+                                  <span className="font-medium text-brand-cyan">Agendado</span>
+                                  <span className="text-xs text-text-secondary whitespace-nowrap">
+                                    {new Date(record.data_agendamento + "T00:00:00").toLocaleDateString("pt-BR")} às{" "}
+                                    {record.horario_agendamento.substring(0, 5)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleOpenScheduleModal(record)}
+                                  title="Editar agendamento"
+                                  className="px-2 py-1 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-1 text-xs"
+                                >
+                                  <Icon name="Edit" className="w-3 h-3" />
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveSchedule(record)}
+                                  title="Remover agendamento"
+                                  className="px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1 text-xs"
+                                >
+                                  <Icon name="X" className="w-3 h-3" />
+                                  Remover
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            // Exibe botões de ação normais - apenas ícones
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleSendWebhook(record)}
+                                disabled={sendingWebhook.has(record.id) || !posVendasWebhook}
+                                title={
+                                  !posVendasWebhook ? "Webhook não configurado para este módulo" : "Enviar avaliação"
+                                }
+                                className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+                              >
+                                {sendingWebhook.has(record.id) ? (
+                                  <Icon name="Loader2" className="w-4 h-4 animate-spin" />
+                                ) : !posVendasWebhook ? (
+                                  <Icon name="AlertCircle" className="w-4 h-4" />
+                                ) : (
+                                  <Icon name="Send" className="w-4 h-4" />
+                                )}
+                              </button>
+
+                              <button
+                                onClick={() => handleOpenScheduleModal(record)}
+                                title="Agendar envio"
+                                className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center"
+                              >
+                                <Icon name="CalendarClock" className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
               </table>
             </div>
-            
+
             {/* Cards Mobile */}
             <div className="lg:hidden space-y-3">
               {pendentesFiltradosPorBusca.length === 0 ? (
                 <div className="bg-bg-secondary rounded-lg p-6 text-center">
                   <p className="text-text-secondary">
-                    {searchTerm ? 'Nenhum registro encontrado com esse termo' : 'Nenhum registro pendente'}
+                    {searchTerm ? "Nenhum registro encontrado com esse termo" : "Nenhum registro pendente"}
                   </p>
                 </div>
               ) : (
@@ -1554,16 +1609,14 @@ const PosVendasPage: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <p className="font-semibold text-sm text-text-primary">{record.nome || '-'}</p>
-                        <p className="text-xs text-text-secondary mt-0.5">
-                          ID: {record.ATENDIMENTO_ID || '-'}
-                        </p>
+                        <p className="font-semibold text-sm text-text-primary">{record.nome || "-"}</p>
+                        <p className="text-xs text-text-secondary mt-0.5">ID: {record.ATENDIMENTO_ID || "-"}</p>
                       </div>
                       <span className="px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 text-xs rounded-full">
                         Pendente
                       </span>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
                         <span className="text-text-secondary">Data:</span>
@@ -1571,10 +1624,10 @@ const PosVendasPage: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-text-secondary">Profissional:</span>
-                        <p className="text-text-primary font-medium">{record.PROFISSIONAL || '-'}</p>
+                        <p className="text-text-primary font-medium">{record.PROFISSIONAL || "-"}</p>
                       </div>
                     </div>
-                    
+
                     {record.data_agendamento && record.horario_agendamento ? (
                       // Exibe informações de agendamento no mobile
                       <div className="space-y-2">
@@ -1583,7 +1636,8 @@ const PosVendasPage: React.FC = () => {
                           <div className="flex-1">
                             <p className="text-sm font-medium text-brand-cyan">Agendado</p>
                             <p className="text-xs text-text-secondary">
-                              {new Date(record.data_agendamento + 'T00:00:00').toLocaleDateString('pt-BR')} às {record.horario_agendamento.substring(0, 5)}
+                              {new Date(record.data_agendamento + "T00:00:00").toLocaleDateString("pt-BR")} às{" "}
+                              {record.horario_agendamento.substring(0, 5)}
                             </p>
                           </div>
                         </div>
@@ -1629,7 +1683,7 @@ const PosVendasPage: React.FC = () => {
                             </>
                           )}
                         </button>
-                        
+
                         <button
                           onClick={() => handleOpenScheduleModal(record)}
                           className="flex-1 px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2 text-sm"
@@ -1643,13 +1697,14 @@ const PosVendasPage: React.FC = () => {
                 ))
               )}
             </div>
-            
+
             {/* Paginação */}
             {pendentesFiltradosPorBusca.length > 0 && (
               <div className="bg-bg-tertiary border-t border-border-primary mt-4 lg:mt-0 rounded-b-lg">
                 <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 gap-3">
                   <div className="text-xs sm:text-sm text-text-secondary text-center sm:text-left">
-                    Mostrando {startIndex + 1}-{Math.min(endIndex, pendentesFiltradosPorBusca.length)} de {pendentesFiltradosPorBusca.length} registro(s)
+                    Mostrando {startIndex + 1}-{Math.min(endIndex, pendentesFiltradosPorBusca.length)} de{" "}
+                    {pendentesFiltradosPorBusca.length} registro(s)
                     {searchTerm && pendentesFiltradosPorBusca.length !== pendentesProfissional.length && (
                       <span className="ml-1">(filtrado de {pendentesProfissional.length})</span>
                     )}
@@ -1680,7 +1735,7 @@ const PosVendasPage: React.FC = () => {
             )}
           </div>
         )}
-        {activeCard === 'agendado' && (
+        {activeCard === "agendado" && (
           <div>
             {/* Tabela Desktop */}
             <div className="hidden lg:block overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -1716,8 +1771,8 @@ const PosVendasPage: React.FC = () => {
                     </tr>
                   ) : (
                     agendados.map((record) => (
-                      <tr 
-                        key={record.id} 
+                      <tr
+                        key={record.id}
                         className="hover:bg-bg-tertiary transition-colors cursor-pointer"
                         onDoubleClick={() => handleEdit(record)}
                         title="Duplo clique para editar"
@@ -1726,26 +1781,26 @@ const PosVendasPage: React.FC = () => {
                           {formatDate(record.data)}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-text-secondary">
-                          {record.ATENDIMENTO_ID || '-'}
+                          {record.ATENDIMENTO_ID || "-"}
                         </td>
                         <td className="px-3 py-2 text-sm text-text-primary">
                           <div>
-                            <p className="font-medium">{record.nome || '-'}</p>
+                            <p className="font-medium">{record.nome || "-"}</p>
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-sm text-text-primary">
-                          {record.PROFISSIONAL || '-'}
-                        </td>
+                        <td className="px-3 py-2 text-sm text-text-primary">{record.PROFISSIONAL || "-"}</td>
                         <td className="px-3 py-2">
                           <div className="flex flex-col items-center gap-1">
                             <div className="flex items-center gap-2 text-sm">
                               <Icon name="CalendarClock" className="w-4 h-4 text-purple-500" />
                               <span className="font-medium text-purple-500">
-                                {record.data_agendamento ? new Date(record.data_agendamento + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                                {record.data_agendamento
+                                  ? new Date(record.data_agendamento + "T00:00:00").toLocaleDateString("pt-BR")
+                                  : "-"}
                               </span>
                             </div>
                             <span className="text-xs text-text-secondary">
-                              {record.horario_agendamento ? record.horario_agendamento.substring(0, 5) : '-'}
+                              {record.horario_agendamento ? record.horario_agendamento.substring(0, 5) : "-"}
                             </span>
                           </div>
                         </td>
@@ -1773,7 +1828,7 @@ const PosVendasPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            
+
             {/* Cards Mobile */}
             <div className="lg:hidden space-y-3">
               {agendados.length === 0 ? (
@@ -1789,16 +1844,14 @@ const PosVendasPage: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <p className="font-semibold text-sm text-text-primary">{record.nome || '-'}</p>
-                        <p className="text-xs text-text-secondary mt-0.5">
-                          ID: {record.ATENDIMENTO_ID || '-'}
-                        </p>
+                        <p className="font-semibold text-sm text-text-primary">{record.nome || "-"}</p>
+                        <p className="text-xs text-text-secondary mt-0.5">ID: {record.ATENDIMENTO_ID || "-"}</p>
                       </div>
                       <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 text-xs rounded-full">
                         Agendado
                       </span>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
                         <span className="text-text-secondary">Data:</span>
@@ -1806,20 +1859,23 @@ const PosVendasPage: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-text-secondary">Profissional:</span>
-                        <p className="text-text-primary font-medium">{record.PROFISSIONAL || '-'}</p>
+                        <p className="text-text-primary font-medium">{record.PROFISSIONAL || "-"}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/10 rounded-lg border border-purple-200 dark:border-purple-800">
                       <Icon name="CalendarClock" className="w-5 h-5 text-purple-500" />
                       <div className="flex-1">
                         <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Agendado para:</p>
                         <p className="text-xs text-text-secondary">
-                          {record.data_agendamento ? new Date(record.data_agendamento + 'T00:00:00').toLocaleDateString('pt-BR') : '-'} às {record.horario_agendamento ? record.horario_agendamento.substring(0, 5) : '-'}
+                          {record.data_agendamento
+                            ? new Date(record.data_agendamento + "T00:00:00").toLocaleDateString("pt-BR")
+                            : "-"}{" "}
+                          às {record.horario_agendamento ? record.horario_agendamento.substring(0, 5) : "-"}
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-2 justify-center">
                       <button
                         onClick={() => handleOpenScheduleModal(record)}
@@ -1842,25 +1898,16 @@ const PosVendasPage: React.FC = () => {
             </div>
           </div>
         )}
-        {activeCard === 'contatado' && renderContatadosTable(contatados, 'Nenhum registro contatado')}
-        {activeCard === 'finalizados' && renderFinalizadosTable(finalizados, 'Nenhum registro finalizado')}
+        {activeCard === "contatado" && renderContatadosTable(contatados, "Nenhum registro contatado")}
+        {activeCard === "finalizados" && renderFinalizadosTable(finalizados, "Nenhum registro finalizado")}
       </div>
 
       {/* Modal */}
-      {isModalOpen && (
-        <PosVendaFormModal
-          record={editingRecord}
-          onClose={handleCloseModal}
-        />
-      )}
+      {isModalOpen && <PosVendaFormModal record={editingRecord} onClose={handleCloseModal} />}
 
       {/* Modal de Agendamento */}
       {isScheduleModalOpen && schedulingRecord && (
-        <ScheduleModal
-          record={schedulingRecord}
-          onClose={handleCloseScheduleModal}
-          onSave={handleSaveSchedule}
-        />
+        <ScheduleModal record={schedulingRecord} onClose={handleCloseScheduleModal} onSave={handleSaveSchedule} />
       )}
     </div>
   );
@@ -1872,14 +1919,14 @@ const ScheduleModal: React.FC<{
   onClose: () => void;
   onSave: (dataAgendamento: string, horarioAgendamento: string) => void;
 }> = ({ record, onClose, onSave }) => {
-  const [dataAgendamento, setDataAgendamento] = useState(record.data_agendamento || '');
-  const [horarioAgendamento, setHorarioAgendamento] = useState(record.horario_agendamento || '');
+  const [dataAgendamento, setDataAgendamento] = useState(record.data_agendamento || "");
+  const [horarioAgendamento, setHorarioAgendamento] = useState(record.horario_agendamento || "");
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dataAgendamento || !horarioAgendamento) {
-      alert('Preencha data e horário para agendar');
+      alert("Preencha data e horário para agendar");
       return;
     }
     setSaving(true);
@@ -1900,8 +1947,8 @@ const ScheduleModal: React.FC<{
               <Icon name="Clock" className="w-5 h-5 text-brand-cyan" />
               <h2 className="text-lg font-bold text-text-primary">Agendar Envio</h2>
             </div>
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               type="button"
               className="text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-lg p-1.5 transition-colors"
               aria-label="Fechar"
@@ -1916,8 +1963,8 @@ const ScheduleModal: React.FC<{
           <div className="px-5 py-4 space-y-4">
             {/* Info do Cliente */}
             <div className="bg-bg-tertiary/50 rounded-lg p-3 border border-border-secondary/50">
-              <p className="text-sm font-medium text-text-primary">{record.nome || '-'}</p>
-              <p className="text-xs text-text-secondary mt-1">ID: {record.ATENDIMENTO_ID || '-'}</p>
+              <p className="text-sm font-medium text-text-primary">{record.nome || "-"}</p>
+              <p className="text-xs text-text-secondary mt-1">ID: {record.ATENDIMENTO_ID || "-"}</p>
               {record.PROFISSIONAL && (
                 <p className="text-xs text-text-secondary">Profissional: {record.PROFISSIONAL}</p>
               )}
@@ -1935,7 +1982,7 @@ const ScheduleModal: React.FC<{
                   value={dataAgendamento}
                   onChange={(e) => setDataAgendamento(e.target.value)}
                   required
-                  min={new Date().toISOString().split('T')[0]}
+                  min={new Date().toISOString().split("T")[0]}
                   className="rounded-lg border border-border-secondary bg-bg-tertiary px-3 py-2 text-sm text-text-primary focus:border-brand-cyan focus:outline-none focus:ring-2 focus:ring-brand-cyan/20 transition-all"
                 />
               </label>
@@ -1960,10 +2007,10 @@ const ScheduleModal: React.FC<{
               <div className="flex items-start gap-2 p-2.5 rounded-lg bg-brand-cyan/5 border border-brand-cyan/20">
                 <Icon name="Info" className="w-4 h-4 text-brand-cyan flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-text-secondary">
-                  O pós-venda será enviado automaticamente em{' '}
+                  O pós-venda será enviado automaticamente em{" "}
                   <strong className="text-brand-cyan">
-                    {new Date(dataAgendamento + 'T00:00:00').toLocaleDateString('pt-BR')}
-                  </strong>{' '}
+                    {new Date(dataAgendamento + "T00:00:00").toLocaleDateString("pt-BR")}
+                  </strong>{" "}
                   às <strong className="text-brand-cyan">{horarioAgendamento}</strong>.
                 </p>
               </div>
