@@ -4,6 +4,9 @@ import { activityLogger } from '../services/utils/activityLogger.service';
 import { User, Profile, Module, Unit } from '../types';
 import { fetchUnitModuleIds } from '../services/units/unitModules.service';
 
+// Toggle simples para usar uma "tabela" mock em vez do Supabase neste momento
+const USE_MOCK_AUTH = true;
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
@@ -51,9 +54,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // demais roles: somente módulos explicitamente atribuídos via user_modules
   //               E cujo allowed_profiles contenha o role do usuário; também ativos.
   const fetchUserModules = async (profile: Profile) => {
+    if (USE_MOCK_AUTH) {
+      // Modo mock: não consulta Supabase, apenas limpa/usa módulos vazios
+      setUserModules([]);
+      return;
+    }
+
     if (profile.role === 'super_admin') {
-      // Super admin agora vê SOMENTE módulos cujo allowed_profiles inclui 'super_admin' e que estejam ativos
-      // (não herda mais módulos 'admin' ou públicos)
       const { data, error } = await supabase
         .from('modules')
         .select('*')
@@ -64,12 +71,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUserModules([]);
       } else {
         const ordered = (data || []).sort((a: any, b: any) => {
-          const posA = a.position ?? 0; const posB = b.position ?? 0; if (posA !== posB) return posA - posB; return a.name.localeCompare(b.name);
+          const posA = a.position ?? 0;
+          const posB = b.position ?? 0;
+          if (posA !== posB) return posA - posB;
+          return a.name.localeCompare(b.name);
         });
         setUserModules(ordered as Module[]);
       }
     } else {
-      // 1) Busca ids dos módulos atribuídos ao usuário
       const { data: userModulesData, error: userModulesError } = await supabase
         .from('user_modules')
         .select('module_id')
@@ -79,13 +88,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       const moduleIds = (userModulesData || []).map(um => um.module_id);
 
-      // 2) Se não há atribuições, não há módulos a exibir
       if (!moduleIds.length) {
         setUserModules([]);
         return;
       }
 
-      // 3) Busca apenas os módulos atribuídos, ativos e cujo allowed_profiles contenha o role do usuário
       const { data: modules, error: modulesError } = await supabase
         .from('modules')
         .select('*')
@@ -99,7 +106,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const list = (modules || []) as Module[];
-      // 4) Ordena por position e nome para consistência
       const ordered = list.sort((a, b) => {
         const posA = a.position ?? 0;
         const posB = b.position ?? 0;
@@ -112,17 +118,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Carrega unidades do usuário (não centralizado antes). Para super_admin mantemos comportamento atual: nenhuma unidade listada.
   const fetchUnitsForUser = async (profile: Profile) => {
+    if (USE_MOCK_AUTH) {
+      // Modo mock: nenhuma unidade carregada do backend ainda
+      setUserUnits([]);
+      return;
+    }
+
     if (profile.role === 'super_admin') {
       setUserUnits([]);
       return;
     }
     try {
-      // Usa serviço segmentado com fallback (RPC get_user_units -> fallback join manual)
       const { fetchUserUnits } = await import('../services/auth/users.service');
       const units = await fetchUserUnits(profile.id as string);
       console.log('[AuthContext] Units retornadas de fetchUserUnits:', units);
       console.log('[AuthContext] Primeira unidade tem is_active?', units[0]?.is_active);
-      // Ordena por nome para consistência
       const ordered = [...units].sort((a, b) => a.unit_name.localeCompare(b.unit_name));
       setUserUnits(ordered);
     } catch (err) {
@@ -231,6 +241,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const login = async (email: string, password: string) => {
+    if (USE_MOCK_AUTH) {
+      // Modo mock: aceita qualquer email/senha e cria um perfil super_admin em memória
+      const mockProfile: Profile = {
+        id: 'mock-user-id',
+        full_name: 'Usuário Mock',
+        role: 'super_admin' as any,
+        email,
+      };
+      setProfile(mockProfile);
+      setUser({ id: mockProfile.id, email: mockProfile.email || '' });
+      localStorage.setItem('userProfile', JSON.stringify(mockProfile));
+      setUserModules([]);
+      setUserUnits([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -250,7 +276,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fetchUnitsForUser(data)
     ]);
 
-    // Registrar login no activity_logs
     const unitCode = data.units?.[0]?.code || null;
     activityLogger.logLogin(data.email || data.name, unitCode, data.role);
   };
